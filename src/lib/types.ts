@@ -26,6 +26,13 @@ export interface SocialPost {
     productName: string;
     platform: 'X' | 'Instagram' | 'TikTok';
     post: string;
-    scheduledAt: string;
+    scheduledAt: string; // ISO 8601 datetime string
     status: SocialPostStatus;
+}
+
+export interface AppConfig {
+  id: 'default'; // Singleton config document
+  automationIntensity: 'manual' | 'semi-auto' | 'full-auto';
+  haramFilterEnabled: boolean;
+  dataSources: ('shopify' | 'x' | 'tiktok')[];
 }

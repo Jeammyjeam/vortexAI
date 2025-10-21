@@ -10,18 +10,19 @@ import {
   doc,
   updateDoc,
   writeBatch,
+  getDoc,
 } from 'firebase/firestore';
 
 import {useFirestore} from '@/firebase';
 import {errorEmitter} from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
-import type { Product } from '@/lib/types';
+import type { Product, AppConfig } from '@/lib/types';
 import { enrichProduct } from '@/lib/product-actions';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { engagementHeatmapData } from '@/lib/mock-data';
 
 
-export function useCollection<T extends {id: string, status: string}>(path: string) {
+export function useCollection<T extends {id: string}>(path: string) {
   const firestore = useFirestore();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,12 +43,23 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const newData = snapshot.docs.map((doc) => ({...doc.data(), id: doc.id})) as T[];
         setData(newData);
         setLoading(false);
 
+        // --- Autonomous Logic ---
         if (path === 'products') {
+          const configRef = doc(firestore, 'config', 'default');
+          const configSnap = await getDoc(configRef);
+          const config = configSnap.data() as AppConfig | undefined;
+
+          // Do not run autonomous logic if disabled
+          if (!config || config.automationIntensity !== 'full-auto') {
+            previousData.current = newData;
+            return;
+          }
+
           const products = newData as unknown as Product[];
           const prevProducts = previousData.current as unknown as Product[];
 
@@ -63,7 +75,7 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
             productsToEnrich.forEach(product => {
               processedEnrichmentIds.current.add(product.id);
               console.log(`[VORTEX AI] Auto-enriching product: ${product.name}`);
-              enrichProduct(firestore, product).catch(err => {
+              enrichProduct(firestore, product, { haramFilterEnabled: config.haramFilterEnabled }).catch(err => {
                 console.error(`[VORTEX AI] Failed to auto-enrich product ${product.id}:`, err);
                 processedEnrichmentIds.current.delete(product.id);
               });
@@ -92,6 +104,7 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
                 targetPlatforms: ['X', 'Instagram', 'TikTok'],
                 engagementAnalytics: JSON.stringify(engagementHeatmapData),
               }).then(async (result) => {
+                if (!firestore) return;
                 const batch = writeBatch(firestore);
                 const postsCollection = collection(firestore, 'social_posts');
                 result.scheduledPosts.forEach(post => {

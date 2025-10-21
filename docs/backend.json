@@ -56,6 +56,26 @@
         "status": { "type": "string", "enum": ["queued", "posted", "failed"] }
       },
       "required": ["productId", "platform", "post", "scheduledAt", "status"]
+    },
+    "AppConfig": {
+      "title": "App Configuration",
+      "description": "Singleton document for application-wide settings.",
+      "type": "object",
+      "properties": {
+        "automationIntensity": {
+          "type": "string",
+          "enum": ["manual", "semi-auto", "full-auto"]
+        },
+        "haramFilterEnabled": {
+          "type": "boolean"
+        },
+        "dataSources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -81,6 +101,12 @@
         "$ref": "#/backend/entities/SocialPost"
       },
       "description": "Stores all scheduled social media posts."
+    },
+    "/config": {
+       "schema": {
+        "$ref": "#/backend/entities/AppConfig"
+      },
+      "description": "Stores application-wide configuration settings."
     }
   }
 }

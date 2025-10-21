@@ -7,7 +7,7 @@ import { Check, X, Sparkles, MoreVertical, Loader2, Send, CalendarClock } from '
 import { doc, updateDoc, writeBatch, collection } from 'firebase/firestore';
 import { format } from 'date-fns';
 
-import type { Product, ProductStatus, SocialPost } from '@/lib/types';
+import type { Product, ProductStatus, SocialPost, AppConfig } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useDoc } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
@@ -50,6 +50,7 @@ const statusConfig: Record<ProductStatus, {
 export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { data: config } = useDoc<AppConfig>('config/default');
   const [isEnriching, setIsEnriching] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const { data: allSocialPosts } = useCollection<SocialPost>('social_posts');
@@ -69,17 +70,17 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   };
 
   const handleManualEnrich = async () => {
-    if (!firestore) {
+    if (!firestore || !config) {
       toast({
         variant: 'destructive',
         title: 'Enrichment Failed',
-        description: 'Firestore is not available.',
+        description: 'System not ready. Firestore or config is not available.',
       });
       return;
     }
     setIsEnriching(true);
     try {
-      await enrichProduct(firestore, product);
+      await enrichProduct(firestore, product, { haramFilterEnabled: config.haramFilterEnabled });
       toast({
         title: 'Enrichment Successful',
         description: `AI content for '${product.name}' has been saved.`,
@@ -89,7 +90,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
       toast({
         variant: 'destructive',
         title: 'Enrichment Failed',
-        description: 'Could not generate and save AI content for this product.',
+        description: `Could not generate AI content. ${error instanceof Error ? error.message : ''}`,
       });
     } finally {
       setIsEnriching(false);
@@ -138,6 +139,8 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
     }
   };
 
+  const canBeEnriched = product.status === 'pending' && product.isHalalCompliant === null;
+
   return (
     <TooltipProvider>
     <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl flex flex-col">
@@ -158,7 +161,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.seo?.title || product.name}>
           {product.seo?.title || product.name}
         </CardTitle>
-        <p className="text-sm text-muted-foreground truncate" title={product.complianceReasoning ?? undefined}>
+        <p className="text-sm text-muted-foreground truncate h-4" title={product.complianceReasoning ?? undefined}>
           {product.complianceReasoning}
         </p>
         <div className="flex justify-between items-center text-muted-foreground text-sm mt-2">
@@ -168,11 +171,11 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
       </CardContent>
       
       {socialPosts && socialPosts.length > 0 && (
-        <div className="px-4 pb-2 text-xs text-muted-foreground">
-          {socialPosts.map((post, index) => (
-             <Tooltip key={index}>
+        <div className="px-4 pb-2 text-xs text-muted-foreground space-y-1">
+          {socialPosts.map((post) => (
+             <Tooltip key={post.id}>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2">
                   <CalendarClock className="h-3 w-3 text-accent" />
                   <span>Scheduled for {post.platform} on {format(new Date(post.scheduledAt), 'MMM d, HH:mm')}</span>
                 </div>
@@ -193,7 +196,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             size="sm" 
             className="hover:bg-primary/20 hover:text-primary"
             onClick={handleManualEnrich}
-            disabled={isEnriching}
+            disabled={isEnriching || !canBeEnriched}
           >
             {isEnriching ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -211,18 +214,20 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             <DropdownMenuContent align="end" className="glass-card">
               <DropdownMenuItem
                 onClick={handleApprove}
+                disabled={product.status === 'approved'}
                 className="text-green-400 focus:bg-green-500/20 focus:text-green-300"
               >
                 <Check className="mr-2 h-4 w-4" /> Approve
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleReject}
+                disabled={product.status === 'rejected'}
                 className="text-red-400 focus:bg-red-500/20 focus:text-red-300"
               >
                 <X className="mr-2 h-4 w-4" /> Reject
               </DropdownMenuItem>
                <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsScheduleDialogOpen(true)}>
+              <DropdownMenuItem onClick={() => setIsScheduleDialogOpen(true)} disabled={product.status !== 'approved'}>
                 <Send className="mr-2 h-4 w-4" />
                 Auto-Schedule Posts
               </DropdownMenuItem>
