@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { autoSchedulePosts, AutoSchedulePostsInput } from '@/ai/flows/auto-schedule-posts';
+import { AutoSchedulePostsInput } from '@/ai/flows/auto-schedule-posts';
 import type { Product } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send } from 'lucide-react';
@@ -22,11 +22,12 @@ interface AutoScheduleDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   product: Product;
+  onSchedule: (platforms: ('X' | 'Instagram' | 'TikTok')[]) => Promise<void>;
 }
 
 const platforms: AutoSchedulePostsInput['targetPlatforms'] = ['X', 'Instagram', 'TikTok'];
 
-export function AutoScheduleDialog({ isOpen, onOpenChange, product }: AutoScheduleDialogProps) {
+export function AutoScheduleDialog({ isOpen, onOpenChange, product, onSchedule }: AutoScheduleDialogProps) {
   const { toast } = useToast();
   const [isScheduling, setIsScheduling] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<AutoSchedulePostsInput['targetPlatforms']>(['X']);
@@ -49,25 +50,8 @@ export function AutoScheduleDialog({ isOpen, onOpenChange, product }: AutoSchedu
     
     setIsScheduling(true);
     try {
-      const result = await autoSchedulePosts({
-        productName: product.name,
-        productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
-        targetPlatforms: selectedPlatforms,
-      });
-
-      toast({
-        title: 'Posts Scheduled Successfully',
-        description: `${result.scheduledPosts.length} posts have been generated and scheduled.`,
-      });
+      await onSchedule(selectedPlatforms);
       onOpenChange(false);
-
-    } catch (error) {
-      console.error('Failed to schedule posts:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Scheduling Failed',
-        description: 'Could not schedule posts for this product.',
-      });
     } finally {
       setIsScheduling(false);
     }

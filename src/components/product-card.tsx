@@ -23,6 +23,7 @@ import { filterHaramProducts } from '@/ai/flows/filter-haram-products';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
+import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 
 
 interface ProductCardProps {
@@ -129,6 +130,43 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
     }
   };
 
+  const handleSchedulePosts = async (platforms: ('X' | 'Instagram' | 'TikTok')[]) => {
+    if (!firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Scheduling Failed',
+        description: 'Firestore is not available.',
+      });
+      return;
+    }
+
+    try {
+      const result = await autoSchedulePosts({
+        productName: product.name,
+        productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
+        targetPlatforms: platforms,
+      });
+
+      const productRef = doc(firestore, 'products', product.id);
+      await updateDoc(productRef, {
+        socialPosts: result.scheduledPosts,
+      });
+
+      toast({
+        title: 'Posts Scheduled Successfully',
+        description: `${result.scheduledPosts.length} posts have been generated and saved.`,
+      });
+
+    } catch (error) {
+      console.error('Failed to schedule posts:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Scheduling Failed',
+        description: 'Could not schedule posts for this product.',
+      });
+    }
+  };
+
   return (
     <>
     <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl">
@@ -207,6 +245,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             isOpen={isScheduleDialogOpen}
             onOpenChange={setIsScheduleDialogOpen}
             product={product}
+            onSchedule={handleSchedulePosts}
         />
     )}
     </>

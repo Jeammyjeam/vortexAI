@@ -18,7 +18,8 @@ export interface Product {
   } | null;
   socialPosts: {
     platform: 'X' | 'Instagram' | 'TikTok';
-    post: string;
-    scheduledAt: string;
+    postContent: string;
+    scheduledTime: string;
+    status: string;
   }[] | null;
 }
