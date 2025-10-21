@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -17,7 +18,13 @@ export default function DashboardLayout({
   const { user, loading } = useUser();
   const router = useRouter();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -25,11 +32,6 @@ export default function DashboardLayout({
     );
   }
   
-  if (!user) {
-    router.replace('/login');
-    return null;
-  }
-
   return (
     <SidebarProvider>
       <DashboardSidebar />
