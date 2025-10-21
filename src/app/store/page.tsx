@@ -1,12 +1,18 @@
+'use client';
+
+import { useState } from 'react';
 import { mockProducts } from '@/lib/mock-data';
 import { ProductCard } from '@/components/product-card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/icons/logo';
 import { ShoppingBag } from 'lucide-react';
+import type { Product, ProductStatus } from '@/lib/types';
+
 
 export default function StorefrontPage() {
-  const approvedProducts = mockProducts.filter((p) => p.status === 'approved');
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const approvedProducts = products.filter((p) => p.status === 'approved');
 
   return (
     <div className="min-h-screen bg-background text-foreground">
