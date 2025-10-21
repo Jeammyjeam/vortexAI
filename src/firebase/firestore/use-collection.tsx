@@ -16,13 +16,16 @@ import {errorEmitter} from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
 import type { Product } from '@/lib/types';
 import { enrichProduct } from '@/lib/product-actions';
+import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 
 
 export function useCollection<T extends {id: string, status: string}>(path: string) {
   const firestore = useFirestore();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
-  const processedIds = useRef(new Set<string>());
+  const previousData = useRef<T[]>([]);
+  const processedEnrichmentIds = useRef(new Set<string>());
+  const processedSchedulingIds = useRef(new Set<string>());
 
   const pathRef = useRef(path);
   useEffect(() => {
@@ -40,28 +43,62 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
         setData(newData);
         setLoading(false);
 
-        // --- Autonomous Enrichment ---
         if (path === 'products') {
-          const productsToProcess = (newData as unknown as Product[]).filter(p => 
+          const products = newData as unknown as Product[];
+          const prevProducts = previousData.current as unknown as Product[];
+
+          // --- Autonomous Enrichment ---
+          const productsToEnrich = products.filter(p => 
             p.status === 'pending' && 
-            !processedIds.current.has(p.id) && 
+            !processedEnrichmentIds.current.has(p.id) && 
             p.isHalalCompliant === null
           );
 
-          if (productsToProcess.length > 0) {
-            console.log(`[VORTEX AI] Detected ${productsToProcess.length} new products to process.`);
-            productsToProcess.forEach(product => {
-              processedIds.current.add(product.id);
+          if (productsToEnrich.length > 0) {
+            console.log(`[VORTEX AI] Detected ${productsToEnrich.length} new products to process for enrichment.`);
+            productsToEnrich.forEach(product => {
+              processedEnrichmentIds.current.add(product.id);
               console.log(`[VORTEX AI] Auto-enriching product: ${product.name}`);
               enrichProduct(firestore, product).catch(err => {
                 console.error(`[VORTEX AI] Failed to auto-enrich product ${product.id}:`, err);
-                // If it fails, remove from processed so it can be retried on next snapshot
-                processedIds.current.delete(product.id);
+                processedEnrichmentIds.current.delete(product.id);
+              });
+            });
+          }
+
+          // --- Autonomous Scheduling ---
+          const newlyApprovedProducts = products.filter(p => {
+            if (p.status !== 'approved' || processedSchedulingIds.current.has(p.id)) {
+              return false;
+            }
+            const prevProduct = prevProducts.find(prev => prev.id === p.id);
+            return !prevProduct || (prevProduct.status !== 'approved');
+          });
+
+          if (newlyApprovedProducts.length > 0) {
+            console.log(`[VORTEX AI] Detected ${newlyApprovedProducts.length} newly approved products for scheduling.`);
+            newlyApprovedProducts.forEach(product => {
+              processedSchedulingIds.current.add(product.id);
+              console.log(`[VORTEX AI] Auto-scheduling posts for product: ${product.name}`);
+              
+              autoSchedulePosts({
+                productName: product.name,
+                productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
+                targetPlatforms: ['X'],
+              }).then(async (result) => {
+                const productRef = doc(firestore, 'products', product.id);
+                await updateDoc(productRef, {
+                  socialPosts: result.scheduledPosts,
+                });
+                console.log(`[VORTEX AI] Successfully scheduled posts for ${product.name}`);
+              }).catch(err => {
+                console.error(`[VORTEX AI] Failed to auto-schedule posts for product ${product.id}:`, err);
+                processedSchedulingIds.current.delete(product.id);
               });
             });
           }
         }
-        // --- End Autonomous Enrichment ---
+        previousData.current = newData;
       },
       (error) => {
         console.error(error);
