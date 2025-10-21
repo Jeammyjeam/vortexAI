@@ -1,117 +1,15 @@
-/**
- * @fileoverview Firestore Security Rules for VORTEX AI GRID.
- *
- * Core Philosophy:
- * This ruleset prioritizes security by enforcing strict access control based on user roles and explicit authorization checks.
- * The system uses Database-Based Access Control (DBAC) for admin roles, checking for the existence of a document in the `/roles_admin/{uid}` collection.
- *
- * Data Structure:
- * - /productListings/{productListingId}: Stores product listing information.
- * - /productListings/{productListingId}/socialPosts/{socialPostId}: Stores social media posts associated with product listings.
- * - /roles_admin/{uid}: Manages admin user roles; document existence grants admin privileges.
- * - /analyticsData/{analyticsDataId}: Stores analytics data for product listings.
- *
- * Key Security Decisions:
- * - Admin roles are managed through the `/roles_admin/{uid}` collection, where the existence of a document grants admin privileges.
- * - No public listing of documents is allowed except for the productListings and analyticData.
- * - Strict ownership and role-based access control are enforced for write operations.
- *
- * Denormalization for Authorization:
- * - Admin roles are denormalized by checking for the existence of a document in the `/roles_admin/{uid}` collection, avoiding costly `get()` calls in the rules.
- *
- * Structural Segregation:
- * - Admin roles are separated into a dedicated collection (`/roles_admin/{uid}`) to isolate their security context and simplify access control.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Grants public read access to product listings, but restricts write access to admins only.
-     * @path /productListings/{productListingId}
-     * @allow (get, list): Any user can read all product listings.
-     * @allow (create, update, delete): Only admin users can create, update, or delete product listings.
-     * @deny (create): Non-admin users cannot create product listings.
-     * @principle Allows public listing with admin-only writes, secured by DBAC role check.
-     */
-    match /productListings/{productListingId} {
-      allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    /**
-     * @description Restricts access to social media posts to admins only.
-     * @path /productListings/{productListingId}/socialPosts/{socialPostId}
-     * @allow (get, list): Only admin users can read all social media posts.
-     * @allow (create, update, delete): Only admin users can create, update, or delete social media posts.
-     * @deny (create): Non-admin users cannot create social media posts.
-     * @principle Secures subcollection with admin-only access, enforced by DBAC role check.
-     */
-    match /productListings/{productListingId}/socialPosts/{socialPostId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description Manages admin user roles. Only authenticated users can create their admin role entry.
-     *              Once created, only the same authenticated user or an existing admin can modify or delete the entry.
-     * @path /roles_admin/{uid}
-     * @allow (get): Any authenticated user can check if they have admin privileges by attempting to `get` their own document.
-     * @allow (create): Only the user with the matching UID can create their own admin document, effectively assigning themselves the admin role.
-     * @allow (update, delete): Only the user with the matching UID or an existing admin can update or delete the document.
-     * @deny (create): Creating an admin role for a different user ID is not allowed.
-     * @principle Enforces ownership and limits admin role creation to authenticated users.
-     */
-    match /roles_admin/{uid} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
-      allow delete: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
-    }
-
-    /**
-     * @description Grants public read access to analytics data, but restricts write access to admins only.
-     * @path /analyticsData/{analyticsDataId}
-     * @allow (get, list): Any user can read analytics data.
-     * @allow (create, update, delete): Only admin users can create, update, or delete analytics data.
-     * @deny (create): Non-admin users cannot create analytics data.
-     * @principle Allows public listing with admin-only writes, secured by DBAC role check.
-     */
-    match /analyticsData/{analyticsDataId} {
-      allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the user is an admin by verifying the existence of a document with their UID in the /roles_admin collection.
-     * @return {boolean} True if the user is an admin, false otherwise.
-     */
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against the authenticated user's UID.
-     * @return {boolean} True if the user IDs match, false otherwise.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // Protect user data:
+    // Users can only read and write their own data.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
