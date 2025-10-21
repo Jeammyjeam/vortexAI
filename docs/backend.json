@@ -80,7 +80,8 @@
   },
   "auth": {
     "providers": [
-      "anonymous"
+      "email",
+      "google"
     ]
   },
   "firestore": {
@@ -102,7 +103,7 @@
       },
       "description": "Stores all scheduled social media posts."
     },
-    "/config": {
+    "/config/default": {
        "schema": {
         "$ref": "#/backend/entities/AppConfig"
       },
