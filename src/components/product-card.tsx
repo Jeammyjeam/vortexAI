@@ -52,7 +52,14 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   };
 
   const handleEnrich = async () => {
-    if (!firestore) return;
+    if (!firestore) {
+        toast({
+            variant: 'destructive',
+            title: 'Enrichment Failed',
+            description: 'Firestore is not available.',
+        });
+        return;
+    }
     setIsEnriching(true);
     try {
       const result = await generateProductDescriptions({
@@ -68,7 +75,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
           description: result.metaDescription,
           keywords: result.rankedKeywords.split(',').map(k => k.trim()),
         },
-        name: result.seoTitle,
+        name: result.seoTitle, // Also update the main product name for consistency
       };
 
       const productRef = doc(firestore, 'products', product.id);
@@ -76,7 +83,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
       
       toast({
         title: 'Enrichment Successful',
-        description: `AI content generated and saved for ${product.name}.`,
+        description: `AI content for '${product.name}' has been saved.`,
       });
 
     } catch (error) {
@@ -107,7 +114,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4">
-        <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.name}>
+        <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.seo?.title || product.name}>
           {product.seo?.title || product.name}
         </CardTitle>
         <div className="flex justify-between items-center text-muted-foreground text-sm">
