@@ -17,6 +17,7 @@ import {
 
 interface ProductCardProps {
   product: Product;
+  onStatusChange?: (productId: string, newStatus: ProductStatus) => void;
 }
 
 const statusConfig: Record<ProductStatus, {
@@ -29,8 +30,16 @@ const statusConfig: Record<ProductStatus, {
   rejected: { label: 'Rejected', className: 'bg-red-500/20 text-red-400 border-red-500/30', variant: 'destructive' },
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onStatusChange }: ProductCardProps) {
   const statusInfo = statusConfig[product.status];
+  
+  const handleApprove = () => {
+    onStatusChange?.(product.id, 'approved');
+  };
+  
+  const handleReject = () => {
+    onStatusChange?.(product.id, 'rejected');
+  };
 
   return (
     <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl">
@@ -68,10 +77,16 @@ export function ProductCard({ product }: ProductCardProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-card">
-            <DropdownMenuItem className="text-green-400 focus:bg-green-500/20 focus:text-green-300">
+            <DropdownMenuItem
+              onClick={handleApprove}
+              className="text-green-400 focus:bg-green-500/20 focus:text-green-300"
+            >
               <Check className="mr-2 h-4 w-4" /> Approve
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-400 focus:bg-red-500/20 focus:text-red-300">
+            <DropdownMenuItem
+              onClick={handleReject}
+              className="text-red-400 focus:bg-red-500/20 focus:text-red-300"
+            >
               <X className="mr-2 h-4 w-4" /> Reject
             </DropdownMenuItem>
           </DropdownMenuContent>
