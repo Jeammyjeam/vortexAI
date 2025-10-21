@@ -9,10 +9,10 @@ import type { Product, ProductStatus } from '@/lib/types';
 export default function DashboardPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts);
 
-  const handleStatusChange = (productId: string, newStatus: ProductStatus) => {
+  const handleProductUpdate = (productId: string, updatedProduct: Partial<Product>) => {
     setProducts(prevProducts =>
       prevProducts.map(p =>
-        p.id === productId ? { ...p, status: newStatus } : p
+        p.id === productId ? { ...p, ...updatedProduct } : p
       )
     );
   };
@@ -37,30 +37,30 @@ export default function DashboardPage() {
           <TabsTrigger value="all" className="font-satoshi">All ({allProducts.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="pending">
-          <ProductGrid products={pendingProducts} onStatusChange={handleStatusChange} />
+          <ProductGrid products={pendingProducts} onProductUpdate={handleProductUpdate} />
         </TabsContent>
         <TabsContent value="approved">
-          <ProductGrid products={approvedProducts} onStatusChange={handleStatusChange} />
+          <ProductGrid products={approvedProducts} onProductUpdate={handleProductUpdate} />
         </TabsContent>
         <TabsContent value="rejected">
-          <ProductGrid products={rejectedProducts} onStatusChange={handleStatusChange} />
+          <ProductGrid products={rejectedProducts} onProductUpdate={handleProductUpdate} />
         </TabsContent>
         <TabsContent value="all">
-          <ProductGrid products={allProducts} onStatusChange={handleStatusChange} />
+          <ProductGrid products={allProducts} onProductUpdate={handleProductUpdate} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function ProductGrid({ products, onStatusChange }: { products: Product[], onStatusChange: (productId: string, newStatus: ProductStatus) => void }) {
+function ProductGrid({ products, onProductUpdate }: { products: Product[], onProductUpdate: (productId: string, updatedProduct: Partial<Product>) => void }) {
   if (products.length === 0) {
     return <div className="text-center text-muted-foreground py-16">No products in this category.</div>
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} onStatusChange={onStatusChange} />
+        <ProductCard key={product.id} product={product} onProductUpdate={onProductUpdate} />
       ))}
     </div>
   );

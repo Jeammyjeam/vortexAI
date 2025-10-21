@@ -22,7 +22,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 
 interface ProductCardProps {
   product: Product;
-  onStatusChange?: (productId: string, newStatus: ProductStatus) => void;
+  onProductUpdate?: (productId: string, updatedProduct: Partial<Product>) => void;
 }
 
 const statusConfig: Record<ProductStatus, {
@@ -35,19 +35,18 @@ const statusConfig: Record<ProductStatus, {
   rejected: { label: 'Rejected', className: 'bg-red-500/20 text-red-400 border-red-500/30', variant: 'destructive' },
 };
 
-export function ProductCard({ product, onStatusChange }: ProductCardProps) {
+export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const { toast } = useToast();
   const [isEnriching, setIsEnriching] = useState(false);
-  const [enrichedContent, setEnrichedContent] = useState<any>(null);
-
+  
   const statusInfo = statusConfig[product.status];
   
   const handleApprove = () => {
-    onStatusChange?.(product.id, 'approved');
+    onProductUpdate?.(product.id, { status: 'approved' });
   };
   
   const handleReject = () => {
-    onStatusChange?.(product.id, 'rejected');
+    onProductUpdate?.(product.id, { status: 'rejected' });
   };
 
   const handleEnrich = async () => {
@@ -59,7 +58,20 @@ export function ProductCard({ product, onStatusChange }: ProductCardProps) {
         keywords: product.imageHint, // Using image hint as a starting point
         targetAudience: 'Online shoppers, tech enthusiasts', // Example target audience
       });
-      setEnrichedContent(result);
+      
+      const updatedSeo = {
+        title: result.seoTitle,
+        description: result.metaDescription,
+        keywords: result.rankedKeywords.split(',').map(k => k.trim()),
+      };
+
+      onProductUpdate?.(product.id, { seo: updatedSeo, name: result.seoTitle });
+
+      toast({
+        title: 'Enrichment Successful',
+        description: `AI content generated for ${product.name}.`,
+      });
+
     } catch (error) {
       console.error('Enrichment failed:', error);
       toast({
@@ -73,7 +85,6 @@ export function ProductCard({ product, onStatusChange }: ProductCardProps) {
   };
 
   return (
-    <>
     <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl">
       <CardHeader className="p-0 relative">
         <Image
@@ -85,19 +96,19 @@ export function ProductCard({ product, onStatusChange }: ProductCardProps) {
           className="object-cover aspect-video transition-transform duration-300 group-hover:scale-105"
         />
         <div className="absolute top-3 right-3 flex gap-2">
-            {onStatusChange && <Badge variant={statusInfo.variant} className={cn('backdrop-blur-sm', statusInfo.className)}>{statusInfo.label}</Badge>}
+            {onProductUpdate && <Badge variant={statusInfo.variant} className={cn('backdrop-blur-sm', statusInfo.className)}>{statusInfo.label}</Badge>}
         </div>
       </CardHeader>
       <CardContent className="p-4">
         <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.name}>
-          {product.name}
+          {product.seo?.title || product.name}
         </CardTitle>
         <div className="flex justify-between items-center text-muted-foreground text-sm">
           <span>{product.category}</span>
           <span className="font-satoshi font-bold text-base text-foreground">${product.price.toLocaleString()}</span>
         </div>
       </CardContent>
-      {onStatusChange && (
+      {onProductUpdate && (
         <CardFooter className="p-4 pt-0 flex gap-2 justify-end">
           <Button 
             variant="ghost" 
@@ -137,39 +148,5 @@ export function ProductCard({ product, onStatusChange }: ProductCardProps) {
         </CardFooter>
       )}
     </Card>
-
-    {enrichedContent && (
-        <AlertDialog open={!!enrichedContent} onOpenChange={() => setEnrichedContent(null)}>
-            <AlertDialogContent className="glass-card">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="font-headline">AI Enrichment Complete</AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-4 pt-4">
-                        <div>
-                            <h3 className="font-bold text-foreground">SEO Title</h3>
-                            <p>{enrichedContent.seoTitle}</p>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-foreground">Meta Description</h3>
-                            <p>{enrichedContent.metaDescription}</p>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-foreground">Caption</h3>
-                            <p>{enrichedContent.caption}</p>
-                        </div>
-                         <div>
-                            <h3 className="font-bold text-foreground">Ranked Keywords</h3>
-                            <p>{enrichedContent.rankedKeywords}</p>
-                        </div>
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => setEnrichedContent(null)} className="btn-satoshi">
-                        Close
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    )}
-    </>
   );
 }
