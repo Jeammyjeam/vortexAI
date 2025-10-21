@@ -7,6 +7,7 @@ import {
   onSnapshot,
   Query,
   DocumentData,
+  doc,
 } from 'firebase/firestore';
 
 import {useFirestore} from '@/firebase';

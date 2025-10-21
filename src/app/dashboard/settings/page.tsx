@@ -6,8 +6,58 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { useFirestore } from '@/firebase';
+import { collection, writeBatch } from 'firebase/firestore';
+import { mockProducts } from '@/lib/mock-data';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function SettingsPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedDatabase = async () => {
+    if (!firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Firestore is not available.',
+      });
+      return;
+    }
+
+    setIsSeeding(true);
+    try {
+      const batch = writeBatch(firestore);
+      const productsCollection = collection(firestore, 'products');
+      
+      mockProducts.forEach(product => {
+        // We can't use the mock ID, so we let firestore generate one.
+        const { id, ...productData } = product;
+        const newProductRef = doc(productsCollection);
+        batch.set(newProductRef, productData);
+      });
+
+      await batch.commit();
+
+      toast({
+        title: 'Database Seeded',
+        description: `${mockProducts.length} products have been added to Firestore.`,
+      });
+    } catch (error) {
+      console.error('Error seeding database:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Database Seeding Failed',
+        description: 'Could not add products to the database.',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <div>
@@ -92,6 +142,29 @@ export default function SettingsPage() {
             </CardContent>
             </Card>
         </div>
+
+        <Card className="glass-card border-amber-500/50">
+          <CardHeader>
+            <CardTitle className="font-headline text-amber-400">Developer</CardTitle>
+            <CardDescription>Actions for development and testing purposes.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+              onClick={handleSeedDatabase}
+              disabled={isSeeding}
+            >
+              {isSeeding ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Seed Database
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Populate the Firestore database with initial mock product data. This is safe to run multiple times.
+            </p>
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end">
           <Button className="btn-satoshi bg-primary hover:bg-primary/90 text-primary-foreground">Save Changes</Button>

@@ -9,9 +9,8 @@ const findImage = (id: string) => {
     }
 }
 
-export const mockProducts: Product[] = [
+export const mockProducts: Omit<Product, 'id'>[] = [
   {
-    id: 'prod_1',
     name: 'Cyber-Quantum Drone',
     category: 'Aerial Tech',
     price: 2499.99,
@@ -24,7 +23,6 @@ export const mockProducts: Product[] = [
     socialPosts: null,
   },
   {
-    id: 'prod_2',
     name: 'Neuro-Link AR Glasses',
     category: 'Wearables',
     price: 1200.0,
@@ -41,7 +39,6 @@ export const mockProducts: Product[] = [
     socialPosts: [],
   },
   {
-    id: 'prod_3',
     name: 'Bioluminescent Fiber Jacket',
     category: 'Apparel',
     price: 750.5,
@@ -58,7 +55,6 @@ export const mockProducts: Product[] = [
     socialPosts: [],
   },
   {
-    id: 'prod_4',
     name: 'Sentient AI Core',
     category: 'Home AI',
     price: 3500.0,
@@ -71,7 +67,6 @@ export const mockProducts: Product[] = [
     socialPosts: null,
   },
   {
-    id: 'prod_5',
     name: 'Auto-Lace Cyber-Kicks',
     category: 'Footwear',
     price: 450.0,
@@ -84,7 +79,6 @@ export const mockProducts: Product[] = [
     socialPosts: null,
   },
   {
-    id: 'prod_6',
     name: 'Modular Exo-Pack',
     category: 'Accessories',
     price: 320.75,
@@ -101,7 +95,6 @@ export const mockProducts: Product[] = [
     socialPosts: [],
   },
   {
-    id: 'prod_7',
     name: 'Zero-G Planter',
     category: 'Home Decor',
     price: 199.99,
@@ -114,7 +107,6 @@ export const mockProducts: Product[] = [
     socialPosts: null,
   },
   {
-    id: 'prod_8',
     name: 'Holo-Phone X',
     category: 'Mobile Devices',
     price: 1899.0,
@@ -131,7 +123,6 @@ export const mockProducts: Product[] = [
     socialPosts: [],
   },
   {
-    id: 'prod_9',
     name: 'Photosynthetic Charger',
     category: 'Gadgets',
     price: 150.0,
