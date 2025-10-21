@@ -6,6 +6,7 @@ import {
   Bot,
   Filter,
   LifeBuoy,
+  ShoppingBag,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -45,6 +46,14 @@ const DashboardSidebar = () => {
               <Link href="/dashboard/analytics">
                 <BarChart2 />
                 <span>Analytics</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Storefront">
+              <Link href="/store">
+                <ShoppingBag />
+                <span>Storefront</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
