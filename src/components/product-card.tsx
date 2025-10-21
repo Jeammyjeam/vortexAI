@@ -52,6 +52,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   };
 
   const handleEnrich = async () => {
+    if (!firestore) return;
     setIsEnriching(true);
     try {
       const result = await generateProductDescriptions({
@@ -70,11 +71,9 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         name: result.seoTitle,
       };
 
-      if (firestore) {
-        const productRef = doc(firestore, 'products', product.id);
-        await updateDoc(productRef, updatedProductData);
-      }
-
+      const productRef = doc(firestore, 'products', product.id);
+      await updateDoc(productRef, updatedProductData);
+      
       toast({
         title: 'Enrichment Successful',
         description: `AI content generated and saved for ${product.name}.`,

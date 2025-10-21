@@ -12,10 +12,10 @@ export default function DashboardPage() {
   const { data: products, loading } = useCollection<Product>('products');
   const firestore = useFirestore();
 
-  const handleProductUpdate = (productId: string, updatedProduct: Partial<Product>) => {
+  const handleProductUpdate = async (productId: string, updatedProduct: Partial<Product>) => {
     if (!firestore) return;
     const productRef = doc(firestore, 'products', productId);
-    updateDoc(productRef, updatedProduct);
+    await updateDoc(productRef, updatedProduct);
   };
   
   const { pendingProducts, approvedProducts, rejectedProducts, allProducts } = useMemo(() => {
