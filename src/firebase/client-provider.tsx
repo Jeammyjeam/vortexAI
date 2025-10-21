@@ -1,10 +1,18 @@
 // DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 'use client';
-import {useMemo} from 'react';
+import { useMemo } from 'react';
+import { FirebaseProvider, initializeFirebase } from '@/firebase';
 
-import {initializeFirebase, FirebaseProvider} from '@/firebase';
+export function FirebaseClientProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { app, firestore, auth } = useMemo(() => initializeFirebase(), []);
 
-export function FirebaseClientProvider({children}: {children: React.ReactNode}) {
-  const a = useMemo(() => initializeFirebase(), []);
-  return <FirebaseProvider {...a}>{children}</FirebaseProvider>;
+  return (
+    <FirebaseProvider app={app} firestore={firestore} auth={auth}>
+      {children}
+    </FirebaseProvider>
+  );
 }
