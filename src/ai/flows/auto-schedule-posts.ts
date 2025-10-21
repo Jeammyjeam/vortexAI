@@ -15,8 +15,7 @@ const AutoSchedulePostsInputSchema = z.object({
   productName: z.string().describe('The name of the product to promote.'),
   productDescription: z.string().describe('A detailed description of the product.'),
   targetPlatforms: z.array(z.enum(['X', 'Instagram', 'TikTok'])).describe('The social media platforms to post to.'),
-  engagementAnalytics: z.string().optional().describe('Engagement analytics data to determine optimal posting times.'),
-  imageTemplate: z.string().optional().describe('URL or data URI for an image template to use in the posts.'),
+  engagementAnalytics: z.string().optional().describe('JSON string representing engagement analytics data (e.g., a heatmap of user activity by hour) to determine optimal posting times.'),
 });
 
 export type AutoSchedulePostsInput = z.infer<typeof AutoSchedulePostsInputSchema>;
@@ -42,7 +41,7 @@ const generatePostContentPrompt = ai.definePrompt({
   name: 'generatePostContentPrompt',
   input: { schema: AutoSchedulePostsInputSchema },
   output: { schema: AutoSchedulePostsOutputSchema },
-  prompt: `You are a social media marketing expert specializing in X (formerly Twitter). Given the following product information, generate a compelling, concise, and engaging X post.
+  prompt: `You are a social media marketing expert specializing in X (formerly Twitter). Given the following product information and engagement data, generate a compelling, concise, and engaging X post and schedule it for the optimal time.
 
 The post should include:
 1.  A strong, attention-grabbing hook.
@@ -54,10 +53,12 @@ The post should include:
 Product Name: {{{productName}}}
 Product Description: {{{productDescription}}}
 
-Generate one post for the X platform. The scheduled time should be a valid ISO 8601 datetime string.
+Analyze the provided engagement analytics to determine the absolute best time to post for maximum impact within the next 24 hours. The scheduledTime MUST be a valid ISO 8601 datetime string in the future.
 
-Consider engagement analytics to create a sentiment-tuned caption for maximum impact.
-Engagement Analytics: {{{engagementAnalytics}}}
+Engagement Analytics (user engagement by hour):
+{{{engagementAnalytics}}}
+
+Generate one post for the X platform.
 `,
 });
 

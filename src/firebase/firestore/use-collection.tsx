@@ -17,6 +17,7 @@ import {FirestorePermissionError} from '@/firebase/errors';
 import type { Product } from '@/lib/types';
 import { enrichProduct } from '@/lib/product-actions';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
+import { engagementHeatmapData } from '@/lib/mock-data';
 
 
 export function useCollection<T extends {id: string, status: string}>(path: string) {
@@ -85,6 +86,7 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
                 productName: product.name,
                 productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
                 targetPlatforms: ['X'],
+                engagementAnalytics: JSON.stringify(engagementHeatmapData),
               }).then(async (result) => {
                 const productRef = doc(firestore, 'products', product.id);
                 await updateDoc(productRef, {
