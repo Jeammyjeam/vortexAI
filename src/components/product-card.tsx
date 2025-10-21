@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Check, X, Sparkles, MoreVertical, Loader2, Send, CalendarClock } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 import type { Product, ProductStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -29,7 +30,6 @@ import { useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
-import { format } from 'date-fns';
 
 
 interface ProductCardProps {
@@ -109,6 +109,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
       });
 
       const productRef = doc(firestore, 'products', product.id);
+      // Note: We use updateDoc here to merge with existing data
       await updateDoc(productRef, {
         socialPosts: result.scheduledPosts,
       });
