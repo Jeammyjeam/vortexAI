@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { generateProductDescriptions } from '@/ai/flows/generate-product-descriptions';
+import { filterHaramProducts } from '@/ai/flows/filter-haram-products';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
@@ -65,6 +67,30 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
     }
     setIsEnriching(true);
     try {
+      // Step 1: Halal Compliance Check
+      const complianceResult = await filterHaramProducts({
+        productDescription: `${product.name} - ${product.category} - ${product.imageHint}`,
+      });
+
+      if (!complianceResult.isHalalCompliant) {
+        const complianceUpdate: Partial<Product> = {
+          status: 'rejected',
+          isHalalCompliant: false,
+          complianceReasoning: complianceResult.reasoning,
+        };
+        const productRef = doc(firestore, 'products', product.id);
+        await updateDoc(productRef, complianceUpdate);
+        
+        toast({
+          variant: 'destructive',
+          title: 'Product Rejected',
+          description: `Reason: ${complianceResult.reasoning}`,
+        });
+        setIsEnriching(false);
+        return;
+      }
+
+      // Step 2: Proceed with content generation if compliant
       const result = await generateProductDescriptions({
         title: product.name,
         category: product.category,
@@ -79,6 +105,8 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
           keywords: result.rankedKeywords.split(',').map(k => k.trim()),
         },
         name: result.seoTitle, // Also update the main product name for consistency
+        isHalalCompliant: true,
+        complianceReasoning: complianceResult.reasoning,
       };
 
       const productRef = doc(firestore, 'products', product.id);
@@ -121,7 +149,10 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.seo?.title || product.name}>
           {product.seo?.title || product.name}
         </CardTitle>
-        <div className="flex justify-between items-center text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground truncate" title={product.complianceReasoning ?? undefined}>
+          {product.complianceReasoning}
+        </p>
+        <div className="flex justify-between items-center text-muted-foreground text-sm mt-2">
           <span>{product.category}</span>
           <span className="font-satoshi font-bold text-base text-foreground">${product.price.toLocaleString()}</span>
         </div>
