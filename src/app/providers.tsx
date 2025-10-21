@@ -13,8 +13,8 @@ export function Providers({
     <FirebaseClientProvider>
       <CommandMenuProvider>
         {children}
+        <Toaster />
       </CommandMenuProvider>
-      <Toaster />
     </FirebaseClientProvider>
   );
 }
