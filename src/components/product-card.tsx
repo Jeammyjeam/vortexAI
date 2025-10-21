@@ -106,10 +106,10 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         productName: product.name,
         productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
         targetPlatforms: platforms,
+        engagementAnalytics: 'mock', // Pass engagement data here
       });
 
       const productRef = doc(firestore, 'products', product.id);
-      // Note: We use updateDoc here to merge with existing data
       await updateDoc(productRef, {
         socialPosts: result.scheduledPosts,
       });
@@ -165,12 +165,12 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-2 mt-1">
                   <CalendarClock className="h-3 w-3 text-accent" />
-                  <span>Scheduled for {post.platform} on {format(new Date(post.scheduledTime), 'MMM d, HH:mm')}</span>
+                  <span>Scheduled for {post.platform} on {format(new Date(post.scheduledAt), 'MMM d, HH:mm')}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="start" className="max-w-xs glass-card">
                 <p className="font-bold">{post.platform} Post:</p>
-                <p className="whitespace-pre-wrap">{post.postContent}</p>
+                <p className="whitespace-pre-wrap">{post.post}</p>
               </TooltipContent>
             </Tooltip>
           ))}

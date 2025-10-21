@@ -85,7 +85,7 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
               autoSchedulePosts({
                 productName: product.name,
                 productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
-                targetPlatforms: ['X'],
+                targetPlatforms: ['X', 'Instagram', 'TikTok'],
                 engagementAnalytics: JSON.stringify(engagementHeatmapData),
               }).then(async (result) => {
                 const productRef = doc(firestore, 'products', product.id);

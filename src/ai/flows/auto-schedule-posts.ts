@@ -20,16 +20,16 @@ const AutoSchedulePostsInputSchema = z.object({
 
 export type AutoSchedulePostsInput = z.infer<typeof AutoSchedulePostsInputSchema>;
 
-const AutoSchedulePostsOutputSchema = z.object({
-  scheduledPosts: z.array(
-    z.object({
-      platform: z.enum(['X', 'Instagram', 'TikTok']),
-      postContent: z.string(),
-      scheduledTime: z.string().datetime(),
-      status: z.string(),
-    })
-  ).describe('A list of scheduled posts with their content, time, and status.'),
+const ScheduledPostSchema = z.object({
+  platform: z.enum(['X', 'Instagram', 'TikTok']),
+  post: z.string().describe('The generated content of the social media post, tailored to the specific platform.'),
+  scheduledAt: z.string().datetime().describe('The optimal time to publish the post, in ISO 8601 format.'),
 });
+
+const AutoSchedulePostsOutputSchema = z.object({
+  scheduledPosts: z.array(ScheduledPostSchema).describe('A list of scheduled posts with their content and time.'),
+});
+
 
 export type AutoSchedulePostsOutput = z.infer<typeof AutoSchedulePostsOutputSchema>;
 
@@ -41,24 +41,25 @@ const generatePostContentPrompt = ai.definePrompt({
   name: 'generatePostContentPrompt',
   input: { schema: AutoSchedulePostsInputSchema },
   output: { schema: AutoSchedulePostsOutputSchema },
-  prompt: `You are a social media marketing expert specializing in X (formerly Twitter). Given the following product information and engagement data, generate a compelling, concise, and engaging X post and schedule it for the optimal time.
+  prompt: `You are a social media marketing expert. Your task is to generate compelling and platform-appropriate posts for a given product.
 
-The post should include:
-1.  A strong, attention-grabbing hook.
-2.  The product name.
-3.  A clear call-to-action (e.g., "Shop now," "Learn more").
-4.  2-3 relevant and trending hashtags.
+You need to create one post for EACH of the following target platforms: {{{json targetPlatforms}}}.
+
+Each post must include:
+1.  A strong, attention-grabbing hook tailored to the platform's audience.
+2.  The product name: {{{productName}}}.
+3.  A clear call-to-action (e.g., "Shop now," "Learn more," "Link in bio").
+4.  Relevant and trending hashtags for each platform.
 5.  An affiliate link placeholder: [AFFILIATE_LINK].
 
-Product Name: {{{productName}}}
 Product Description: {{{productDescription}}}
 
-Analyze the provided engagement analytics to determine the absolute best time to post for maximum impact within the next 24 hours. The scheduledTime MUST be a valid ISO 8601 datetime string in the future.
+Analyze the provided engagement analytics to determine the absolute best time to post for maximum impact within the next 24 hours. The scheduledAt time MUST be a valid ISO 8601 datetime string in the future.
 
 Engagement Analytics (user engagement by hour):
 {{{engagementAnalytics}}}
 
-Generate one post for the X platform.
+Generate one post for each platform listed in targetPlatforms. Ensure the content is unique and optimized for the specific platform (e.g., concise and witty for X, visually-driven and story-focused for Instagram, short and punchy for TikTok).
 `,
 });
 
@@ -69,9 +70,7 @@ const autoSchedulePostsFlow = ai.defineFlow(
     outputSchema: AutoSchedulePostsOutputSchema,
   },
   async input => {
-    // For now, we are only handling 'X'
-    const xInput = {...input, targetPlatforms: ['X']};
-    const { output } = await generatePostContentPrompt(xInput);
+    const { output } = await generatePostContentPrompt(input);
     return output!;
   }
 );
