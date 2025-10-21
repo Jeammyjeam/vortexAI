@@ -1,7 +1,15 @@
+
+'use client';
+
 import { TrendingProductsChart } from '@/components/charts/trending-products-chart';
 import { EngagementHeatmap } from '@/components/charts/engagement-heatmap';
+import { useCollection } from '@/firebase';
+import type { Product } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AnalyticsPage() {
+  const { data: products, loading } = useCollection<Product>('products');
+
   return (
     <div className="space-y-8">
       <div>
@@ -10,7 +18,11 @@ export default function AnalyticsPage() {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <TrendingProductsChart />
+        {loading ? (
+          <Skeleton className="h-[400px] w-full" />
+        ) : (
+          <TrendingProductsChart products={products || []} />
+        )}
         <EngagementHeatmap />
       </div>
 
