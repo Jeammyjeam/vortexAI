@@ -7,7 +7,7 @@ import {useFirestore} from '@/firebase';
 import {errorEmitter} from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
 
-export function useDoc<T>(path: string) {
+export function useDoc<T extends {id: string}>(path: string) {
   const firestore = useFirestore();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ export function useDoc<T>(path: string) {
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
-        setData(snapshot.data() as T);
+        setData({ ...snapshot.data(), id: snapshot.id } as T);
         setLoading(false);
       },
       (error) => {

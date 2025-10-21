@@ -18,12 +18,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { generateProductDescriptions } from '@/ai/flows/generate-product-descriptions';
-import { filterHaramProducts } from '@/ai/flows/filter-haram-products';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
+import { enrichProduct } from '@/lib/product-actions';
 
 
 interface ProductCardProps {
@@ -57,67 +56,22 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
     onProductUpdate?.(product.id, { status: 'rejected' });
   };
 
-  const handleEnrich = async () => {
+  const handleManualEnrich = async () => {
     if (!firestore) {
-        toast({
-            variant: 'destructive',
-            title: 'Enrichment Failed',
-            description: 'Firestore is not available.',
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Enrichment Failed',
+        description: 'Firestore is not available.',
+      });
+      return;
     }
     setIsEnriching(true);
     try {
-      // Step 1: Halal Compliance Check
-      const complianceResult = await filterHaramProducts({
-        productDescription: `${product.name} - ${product.category} - ${product.imageHint}`,
-      });
-
-      if (!complianceResult.isHalalCompliant) {
-        const complianceUpdate: Partial<Product> = {
-          status: 'rejected',
-          isHalalCompliant: false,
-          complianceReasoning: complianceResult.reasoning,
-        };
-        const productRef = doc(firestore, 'products', product.id);
-        await updateDoc(productRef, complianceUpdate);
-        
-        toast({
-          variant: 'destructive',
-          title: 'Product Rejected',
-          description: `Reason: ${complianceResult.reasoning}`,
-        });
-        setIsEnriching(false);
-        return;
-      }
-
-      // Step 2: Proceed with content generation if compliant
-      const result = await generateProductDescriptions({
-        title: product.name,
-        category: product.category,
-        keywords: product.imageHint, // Using image hint as a starting point
-        targetAudience: 'Online shoppers, tech enthusiasts', // Example target audience
-      });
-      
-      const updatedProductData: Partial<Product> = {
-        seo: {
-          title: result.seoTitle,
-          description: result.metaDescription,
-          keywords: result.rankedKeywords.split(',').map(k => k.trim()),
-        },
-        name: result.seoTitle, // Also update the main product name for consistency
-        isHalalCompliant: true,
-        complianceReasoning: complianceResult.reasoning,
-      };
-
-      const productRef = doc(firestore, 'products', product.id);
-      await updateDoc(productRef, updatedProductData);
-      
+      await enrichProduct(firestore, product);
       toast({
         title: 'Enrichment Successful',
         description: `AI content for '${product.name}' has been saved.`,
       });
-
     } catch (error) {
       console.error('Enrichment failed:', error);
       toast({
@@ -201,7 +155,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             variant="ghost" 
             size="sm" 
             className="hover:bg-primary/20 hover:text-primary"
-            onClick={handleEnrich}
+            onClick={handleManualEnrich}
             disabled={isEnriching}
           >
             {isEnriching ? (
