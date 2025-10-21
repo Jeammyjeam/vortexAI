@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Check, X, Sparkles, MoreVertical, Loader2 } from 'lucide-react';
+import { Check, X, Sparkles, MoreVertical, Loader2, Send } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 
 import type { Product, ProductStatus } from '@/lib/types';
@@ -14,11 +14,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { generateProductDescriptions } from '@/ai/flows/generate-product-descriptions';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
+import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 
 
 interface ProductCardProps {
@@ -40,6 +42,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const [isEnriching, setIsEnriching] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   
   const statusInfo = statusConfig[product.status];
   
@@ -99,6 +102,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   };
 
   return (
+    <>
     <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl">
       <CardHeader className="p-0 relative">
         <Image
@@ -157,10 +161,23 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
               >
                 <X className="mr-2 h-4 w-4" /> Reject
               </DropdownMenuItem>
+               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setIsScheduleDialogOpen(true)}>
+                <Send className="mr-2 h-4 w-4" />
+                Auto-Schedule Posts
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardFooter>
       )}
     </Card>
+    {onProductUpdate && (
+        <AutoScheduleDialog 
+            isOpen={isScheduleDialogOpen}
+            onOpenChange={setIsScheduleDialogOpen}
+            product={product}
+        />
+    )}
+    </>
   );
 }
