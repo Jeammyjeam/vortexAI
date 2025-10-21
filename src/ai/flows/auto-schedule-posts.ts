@@ -42,17 +42,23 @@ const generatePostContentPrompt = ai.definePrompt({
   name: 'generatePostContentPrompt',
   input: { schema: AutoSchedulePostsInputSchema },
   output: { schema: AutoSchedulePostsOutputSchema },
-  prompt: `You are a social media marketing expert.  Given the following product and target platforms, generate engaging social media posts including captions and hashtags.
+  prompt: `You are a social media marketing expert specializing in X (formerly Twitter). Given the following product information, generate a compelling, concise, and engaging X post.
+
+The post should include:
+1.  A strong, attention-grabbing hook.
+2.  The product name.
+3.  A clear call-to-action (e.g., "Shop now," "Learn more").
+4.  2-3 relevant and trending hashtags.
+5.  An affiliate link placeholder: [AFFILIATE_LINK].
 
 Product Name: {{{productName}}}
 Product Description: {{{productDescription}}}
-Target Platforms: {{#each targetPlatforms}}{{{this}}} {{/each}}
 
-Return a JSON array of scheduled posts, each containing the platform, post content, and a suggested scheduled time.  The scheduled time should be a valid ISO 8601 datetime string.
+Generate one post for the X platform. The scheduled time should be a valid ISO 8601 datetime string.
 
-Consider engagement analytics and create sentiment-tuned captions and appropriate hashtags for maximum impact.
+Consider engagement analytics to create a sentiment-tuned caption for maximum impact.
 Engagement Analytics: {{{engagementAnalytics}}}
-Image Template: {{media url=imageTemplate}}`,
+`,
 });
 
 const autoSchedulePostsFlow = ai.defineFlow(
@@ -62,7 +68,9 @@ const autoSchedulePostsFlow = ai.defineFlow(
     outputSchema: AutoSchedulePostsOutputSchema,
   },
   async input => {
-    const { output } = await generatePostContentPrompt(input);
+    // For now, we are only handling 'X'
+    const xInput = {...input, targetPlatforms: ['X']};
+    const { output } = await generatePostContentPrompt(xInput);
     return output!;
   }
 );
