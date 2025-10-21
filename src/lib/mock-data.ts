@@ -20,7 +20,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
     isHalalCompliant: null,
     complianceReasoning: null,
     seo: null,
-    socialPosts: null,
   },
   {
     name: 'Neuro-Link AR Glasses',
@@ -36,7 +35,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
       description: 'Experience the future of augmented reality with the sleek and powerful Neuro-Link AR Glasses.',
       keywords: ['AR', 'augmented reality', 'smart glasses', 'wearable tech'],
     },
-    socialPosts: [],
   },
   {
     name: 'Bioluminescent Fiber Jacket',
@@ -52,7 +50,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
       description: 'Light up the night with this stunning jacket made from next-gen bioluminescent fibers.',
       keywords: ['fashion', 'techwear', 'bioluminescent', 'glowing jacket'],
     },
-    socialPosts: [],
   },
   {
     name: 'Sentient AI Core',
@@ -64,7 +61,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
     isHalalCompliant: null,
     complianceReasoning: null,
     seo: null,
-    socialPosts: null,
   },
   {
     name: 'Auto-Lace Cyber-Kicks',
@@ -76,7 +72,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
     isHalalCompliant: false,
     complianceReasoning: 'Product contains leather from a non-Zabiha source, rendering it Haram.',
     seo: null,
-    socialPosts: null,
   },
   {
     name: 'Modular Exo-Pack',
@@ -92,7 +87,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
       description: 'Customize your carry with the ultra-durable and versatile Modular Exo-Pack.',
       keywords: ['backpack', 'modular', 'tech accessories', 'durable'],
     },
-    socialPosts: [],
   },
   {
     name: 'Zero-G Planter',
@@ -104,7 +98,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
     isHalalCompliant: null,
     complianceReasoning: null,
     seo: null,
-    socialPosts: null,
   },
   {
     name: 'Holo-Phone X',
@@ -120,7 +113,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
       description: 'Break free from the screen with the revolutionary Holo-Phone X and its holographic interface.',
       keywords: ['smartphone', 'holographic', 'future tech', 'mobile'],
     },
-    socialPosts: [],
   },
   {
     name: 'Photosynthetic Charger',
@@ -132,7 +124,6 @@ export const mockProducts: Omit<Product, 'id'>[] = [
     isHalalCompliant: null,
     complianceReasoning: null,
     seo: null,
-    socialPosts: null,
   },
 ];
 

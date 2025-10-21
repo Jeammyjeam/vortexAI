@@ -10,8 +10,10 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { SocialPost } from '@/lib/types';
 
 const AutoSchedulePostsInputSchema = z.object({
+  productId: z.string().describe('The ID of the product to promote.'),
   productName: z.string().describe('The name of the product to promote.'),
   productDescription: z.string().describe('A detailed description of the product.'),
   targetPlatforms: z.array(z.enum(['X', 'Instagram', 'TikTok'])).describe('The social media platforms to post to.'),
@@ -21,9 +23,12 @@ const AutoSchedulePostsInputSchema = z.object({
 export type AutoSchedulePostsInput = z.infer<typeof AutoSchedulePostsInputSchema>;
 
 const ScheduledPostSchema = z.object({
+  productId: z.string().describe('The ID of the product this post is for.'),
+  productName: z.string().describe('The name of the product this post is for.'),
   platform: z.enum(['X', 'Instagram', 'TikTok']),
   post: z.string().describe('The generated content of the social media post, tailored to the specific platform.'),
   scheduledAt: z.string().datetime().describe('The optimal time to publish the post, in ISO 8601 format.'),
+  status: z.enum(['queued', 'posted', 'failed']).describe('The status of the scheduled post.')
 });
 
 const AutoSchedulePostsOutputSchema = z.object({
@@ -44,6 +49,7 @@ const generatePostContentPrompt = ai.definePrompt({
   prompt: `You are a social media marketing expert. Your task is to generate compelling and platform-appropriate posts for a given product.
 
 You need to create one post for EACH of the following target platforms: {{{json targetPlatforms}}}.
+For each post, you must set the 'status' to 'queued' and include the 'productId': '{{{productId}}}'.
 
 Each post must include:
 1.  A strong, attention-grabbing hook tailored to the platform's audience.

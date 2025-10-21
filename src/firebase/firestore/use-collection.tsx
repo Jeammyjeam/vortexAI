@@ -9,6 +9,7 @@ import {
   DocumentData,
   doc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 
 import {useFirestore} from '@/firebase';
@@ -37,8 +38,10 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
     if (!firestore) return;
 
     const coll = collection(firestore, pathRef.current);
+    const q = query(coll);
+
     const unsubscribe = onSnapshot(
-      coll,
+      q,
       (snapshot) => {
         const newData = snapshot.docs.map((doc) => ({...doc.data(), id: doc.id})) as T[];
         setData(newData);
@@ -83,15 +86,20 @@ export function useCollection<T extends {id: string, status: string}>(path: stri
               console.log(`[VORTEX AI] Auto-scheduling posts for product: ${product.name}`);
               
               autoSchedulePosts({
+                productId: product.id,
                 productName: product.name,
                 productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
                 targetPlatforms: ['X', 'Instagram', 'TikTok'],
                 engagementAnalytics: JSON.stringify(engagementHeatmapData),
               }).then(async (result) => {
-                const productRef = doc(firestore, 'products', product.id);
-                await updateDoc(productRef, {
-                  socialPosts: result.scheduledPosts,
+                const batch = writeBatch(firestore);
+                const postsCollection = collection(firestore, 'social_posts');
+                result.scheduledPosts.forEach(post => {
+                  const newPostRef = doc(postsCollection);
+                  batch.set(newPostRef, post);
                 });
+                await batch.commit();
+
                 console.log(`[VORTEX AI] Successfully scheduled posts for ${product.name}`);
               }).catch(err => {
                 console.error(`[VORTEX AI] Failed to auto-schedule posts for product ${product.id}:`, err);

@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Check, X, Sparkles, MoreVertical, Loader2, Send, CalendarClock } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, collection } from 'firebase/firestore';
 import { format } from 'date-fns';
 
-import type { Product, ProductStatus } from '@/lib/types';
+import type { Product, ProductStatus, SocialPost } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
+import { useCollection, useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
@@ -52,6 +52,11 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const firestore = useFirestore();
   const [isEnriching, setIsEnriching] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const { data: allSocialPosts } = useCollection<SocialPost>('social_posts');
+
+  const socialPosts = useMemo(() => {
+    return allSocialPosts?.filter(p => p.productId === product.id) || [];
+  }, [allSocialPosts, product.id]);
   
   const statusInfo = statusConfig[product.status];
   
@@ -103,16 +108,20 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
 
     try {
       const result = await autoSchedulePosts({
+        productId: product.id,
         productName: product.name,
         productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
         targetPlatforms: platforms,
         engagementAnalytics: 'mock', // Pass engagement data here
       });
 
-      const productRef = doc(firestore, 'products', product.id);
-      await updateDoc(productRef, {
-        socialPosts: result.scheduledPosts,
+      const batch = writeBatch(firestore);
+      const postsCollection = collection(firestore, 'social_posts');
+      result.scheduledPosts.forEach(post => {
+        const newPostRef = doc(postsCollection);
+        batch.set(newPostRef, post);
       });
+      await batch.commit();
 
       toast({
         title: 'Posts Scheduled Successfully',
@@ -158,9 +167,9 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         </div>
       </CardContent>
       
-      {product.socialPosts && product.socialPosts.length > 0 && (
+      {socialPosts && socialPosts.length > 0 && (
         <div className="px-4 pb-2 text-xs text-muted-foreground">
-          {product.socialPosts.map((post, index) => (
+          {socialPosts.map((post, index) => (
              <Tooltip key={index}>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-2 mt-1">

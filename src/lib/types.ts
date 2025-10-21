@@ -16,9 +16,16 @@ export interface Product {
     description: string;
     keywords: string[];
   } | null;
-  socialPosts: {
+}
+
+export type SocialPostStatus = 'queued' | 'posted' | 'failed';
+
+export interface SocialPost {
+    id: string;
+    productId: string;
+    productName: string;
     platform: 'X' | 'Instagram' | 'TikTok';
     post: string;
     scheduledAt: string;
-  }[] | null;
+    status: SocialPostStatus;
 }
