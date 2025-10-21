@@ -1,3 +1,58 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "prod_1",
+      "description": "A sleek, futuristic drone hovering in a neon-lit city.",
+      "imageUrl": "https://images.unsplash.com/photo-1718453908945-f9520145837f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmdXR1cmlzdGljJTIwZHJvbmV8ZW58MHx8fHwxNzYxMDc1MzUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "futuristic drone"
+    },
+    {
+      "id": "prod_2",
+      "description": "Smart glasses displaying holographic data.",
+      "imageUrl": "https://images.unsplash.com/photo-1707167144646-cea7d2027ef7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzbWFydCUyMGdsYXNzZXN8ZW58MHx8fHwxNzYxMDc1MzUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smart glasses"
+    },
+    {
+      "id": "prod_3",
+      "description": "A stylish bio-luminescent jacket.",
+      "imageUrl": "https://images.unsplash.com/photo-1633969853308-a7de3764f31e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxsdW1pbmVzY2VudCUyMGphY2tldHxlbnwwfHx8fDE3NjEwNzUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "luminescent jacket"
+    },
+    {
+      "id": "prod_4",
+      "description": "A personal AI assistant device in the shape of a glowing orb.",
+      "imageUrl": "https://images.unsplash.com/photo-1694903110330-cc64b7e1d21d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxBSSUyMGFzc2lzdGFudHxlbnwwfHx8fDE3NjEwNTY1MzR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "AI assistant"
+    },
+    {
+      "id": "prod_5",
+      "description": "Self-lacing cyberpunk boots with neon accents.",
+      "imageUrl": "https://images.unsplash.com/photo-1727582917307-25078b767df9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjeWJlcnB1bmslMjBib290c3xlbnwwfHx8fDE3NjEwNzUzNTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cyberpunk boots"
+    },
+    {
+      "id": "prod_6",
+      "description": "A high-tech modular backpack.",
+      "imageUrl": "https://images.unsplash.com/photo-1673505705697-763b670e9afd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtb2R1bGFyJTIwYmFja3BhY2t8ZW58MHx8fHwxNzYxMDc1MzUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modular backpack"
+    },
+    {
+      "id": "prod_7",
+      "description": "A zero-gravity plant pot.",
+      "imageUrl": "https://images.unsplash.com/photo-1725714354686-0a8b522037bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxsZXZpdGF0aW5nJTIwcGxhbnR8ZW58MHx8fHwxNzYwOTY4NTYwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "levitating plant"
+    },
+    {
+      "id": "prod_8",
+      "description": "A transparent smartphone with a holographic interface.",
+      "imageUrl": "https://images.unsplash.com/photo-1560130903-a11aeeac0304?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx0cmFuc3BhcmVudCUyMHBob25lfGVufDB8fHx8MTc2MTA3NTM1Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "transparent phone"
+    },
+    {
+      "id": "prod_9",
+      "description": "A portable solar charger that unfurls like a leaf.",
+      "imageUrl": "https://images.unsplash.com/photo-1692052607011-10d51b24223f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzb2xhciUyMGNoYXJnZXJ8ZW58MHx8fHwxNzYxMDc1MzUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "solar charger"
+    }
+  ]
 }
