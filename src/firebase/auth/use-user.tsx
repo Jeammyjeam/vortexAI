@@ -1,3 +1,4 @@
+
 // DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 'use client';
 import {useEffect, useState} from 'react';
@@ -12,7 +13,8 @@ export const useUser = () => {
 
   useEffect(() => {
     if (!auth) {
-      setLoading(false);
+      // If auth is not ready, we are still loading.
+      // This can happen on the first render.
       return;
     }
     const unsubscribe = onAuthStateChanged(
