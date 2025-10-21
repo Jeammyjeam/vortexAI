@@ -9,8 +9,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <FirebaseClientProvider>
       <CommandMenuProvider>
         {children}
-        <Toaster />
       </CommandMenuProvider>
+      <Toaster />
     </FirebaseClientProvider>
   );
 }
