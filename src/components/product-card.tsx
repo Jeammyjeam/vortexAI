@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Check, X, Sparkles, MoreVertical, Loader2, Send } from 'lucide-react';
+import { Check, X, Sparkles, MoreVertical, Loader2, Send, CalendarClock } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 
 import type { Product, ProductStatus } from '@/lib/types';
@@ -18,11 +18,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
+import { format } from 'date-fns';
 
 
 interface ProductCardProps {
@@ -122,8 +129,8 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   };
 
   return (
-    <>
-    <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl">
+    <TooltipProvider>
+    <Card className="glass-card overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-primary/10 hover:shadow-2xl flex flex-col">
       <CardHeader className="p-0 relative">
         <Image
           src={product.imageUrl}
@@ -137,7 +144,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             {onProductUpdate && <Badge variant={statusInfo.variant} className={cn('backdrop-blur-sm', statusInfo.className)}>{statusInfo.label}</Badge>}
         </div>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-4 flex-grow">
         <CardTitle className="font-headline text-lg leading-tight mb-2 truncate" title={product.seo?.title || product.name}>
           {product.seo?.title || product.name}
         </CardTitle>
@@ -149,8 +156,28 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
           <span className="font-satoshi font-bold text-base text-foreground">${product.price.toLocaleString()}</span>
         </div>
       </CardContent>
+      
+      {product.socialPosts && product.socialPosts.length > 0 && (
+        <div className="px-4 pb-2 text-xs text-muted-foreground">
+          {product.socialPosts.map((post, index) => (
+             <Tooltip key={index}>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 mt-1">
+                  <CalendarClock className="h-3 w-3 text-accent" />
+                  <span>Scheduled for {post.platform} on {format(new Date(post.scheduledTime), 'MMM d, HH:mm')}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" className="max-w-xs glass-card">
+                <p className="font-bold">{post.platform} Post:</p>
+                <p className="whitespace-pre-wrap">{post.postContent}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      )}
+
       {onProductUpdate && (
-        <CardFooter className="p-4 pt-0 flex gap-2 justify-end">
+        <CardFooter className="p-4 pt-2 flex gap-2 justify-end">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -202,6 +229,6 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
             onSchedule={handleSchedulePosts}
         />
     )}
-    </>
+    </TooltipProvider>
   );
 }
