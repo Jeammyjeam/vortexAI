@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Check, X, Sparkles, MoreVertical, Loader2 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import type { Product, ProductStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { generateProductDescriptions } from '@/ai/flows/generate-product-descriptions';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { useFirestore } from '@/firebase';
 
 
 interface ProductCardProps {
@@ -37,6 +38,7 @@ const statusConfig: Record<ProductStatus, {
 
 export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const [isEnriching, setIsEnriching] = useState(false);
   
   const statusInfo = statusConfig[product.status];
@@ -59,17 +61,23 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         targetAudience: 'Online shoppers, tech enthusiasts', // Example target audience
       });
       
-      const updatedSeo = {
-        title: result.seoTitle,
-        description: result.metaDescription,
-        keywords: result.rankedKeywords.split(',').map(k => k.trim()),
+      const updatedProductData: Partial<Product> = {
+        seo: {
+          title: result.seoTitle,
+          description: result.metaDescription,
+          keywords: result.rankedKeywords.split(',').map(k => k.trim()),
+        },
+        name: result.seoTitle,
       };
 
-      onProductUpdate?.(product.id, { seo: updatedSeo, name: result.seoTitle });
+      if (firestore) {
+        const productRef = doc(firestore, 'products', product.id);
+        await updateDoc(productRef, updatedProductData);
+      }
 
       toast({
         title: 'Enrichment Successful',
-        description: `AI content generated for ${product.name}.`,
+        description: `AI content generated and saved for ${product.name}.`,
       });
 
     } catch (error) {
@@ -77,7 +85,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
       toast({
         variant: 'destructive',
         title: 'Enrichment Failed',
-        description: 'Could not generate AI content for this product.',
+        description: 'Could not generate and save AI content for this product.',
       });
     } finally {
       setIsEnriching(false);

@@ -15,6 +15,44 @@
           "description": "The URL of the user's profile picture."
         }
       }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Represents a product in the store.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "viralVelocity": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "imageHint": { "type": "string" },
+        "isHalalCompliant": { "type": ["boolean", "null"] },
+        "complianceReasoning": { "type": ["string", "null"] },
+        "seo": {
+          "type": ["object", "null"],
+          "properties": {
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "keywords": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "socialPosts": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "properties": {
+              "platform": { "type": "string", "enum": ["X", "Instagram", "TikTok"] },
+              "post": { "type": "string" },
+              "scheduledAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -28,6 +66,12 @@
         "$ref": "#/backend/entities/UserProfile"
       },
       "description": "Stores public information for each user."
+    },
+    "/products": {
+      "schema": {
+        "$ref": "#/backend/entities/Product"
+      },
+      "description": "Stores all products for the e-commerce store."
     }
   }
 }

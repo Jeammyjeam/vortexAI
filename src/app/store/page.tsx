@@ -1,18 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { mockProducts } from '@/lib/mock-data';
+import { useCollection } from '@/firebase';
 import { ProductCard } from '@/components/product-card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/icons/logo';
 import { ShoppingBag } from 'lucide-react';
-import type { Product, ProductStatus } from '@/lib/types';
-
+import type { Product } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StorefrontPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const approvedProducts = products.filter((p) => p.status === 'approved');
+  const { data: products, loading } = useCollection<Product>('products');
+  const approvedProducts = products?.filter((p) => p.status === 'approved') || [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -44,16 +43,18 @@ export default function StorefrontPage() {
           </p>
         </div>
 
-        {approvedProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {loading ? (
+          <ProductGridSkeleton />
+        ) : approvedProducts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {approvedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} />
             ))}
-            </div>
+          </div>
         ) : (
-            <div className="text-center py-16">
-                <p className="text-xl text-muted-foreground">No approved products yet. Check back soon!</p>
-            </div>
+          <div className="text-center py-16">
+            <p className="text-xl text-muted-foreground">No approved products yet. Check back soon!</p>
+          </div>
         )}
       </main>
       <footer className="border-t mt-16">
@@ -65,6 +66,22 @@ export default function StorefrontPage() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function ProductGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="space-y-4">
+          <Skeleton className="h-[225px] w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

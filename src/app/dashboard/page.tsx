@@ -1,26 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { mockProducts } from '@/lib/mock-data';
+import { useMemo } from 'react';
+import { useCollection, useFirestore } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { ProductCard } from '@/components/product-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Product, ProductStatus } from '@/lib/types';
+import type { Product } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const { data: products, loading } = useCollection<Product>('products');
+  const firestore = useFirestore();
 
   const handleProductUpdate = (productId: string, updatedProduct: Partial<Product>) => {
-    setProducts(prevProducts =>
-      prevProducts.map(p =>
-        p.id === productId ? { ...p, ...updatedProduct } : p
-      )
-    );
+    if (!firestore) return;
+    const productRef = doc(firestore, 'products', productId);
+    updateDoc(productRef, updatedProduct);
   };
   
-  const allProducts = products;
-  const pendingProducts = allProducts.filter((p) => p.status === 'pending');
-  const approvedProducts = allProducts.filter((p) => p.status === 'approved');
-  const rejectedProducts = allProducts.filter((p) => p.status === 'rejected');
+  const { pendingProducts, approvedProducts, rejectedProducts, allProducts } = useMemo(() => {
+    const all = products || [];
+    return {
+      allProducts: all,
+      pendingProducts: all.filter((p) => p.status === 'pending'),
+      approvedProducts: all.filter((p) => p.status === 'approved'),
+      rejectedProducts: all.filter((p) => p.status === 'rejected'),
+    };
+  }, [products]);
+
 
   return (
     <div className="space-y-8">
@@ -36,18 +43,25 @@ export default function DashboardPage() {
           <TabsTrigger value="rejected" className="font-satoshi">Rejected ({rejectedProducts.length})</TabsTrigger>
           <TabsTrigger value="all" className="font-satoshi">All ({allProducts.length})</TabsTrigger>
         </TabsList>
-        <TabsContent value="pending">
-          <ProductGrid products={pendingProducts} onProductUpdate={handleProductUpdate} />
-        </TabsContent>
-        <TabsContent value="approved">
-          <ProductGrid products={approvedProducts} onProductUpdate={handleProductUpdate} />
-        </TabsContent>
-        <TabsContent value="rejected">
-          <ProductGrid products={rejectedProducts} onProductUpdate={handleProductUpdate} />
-        </TabsContent>
-        <TabsContent value="all">
-          <ProductGrid products={allProducts} onProductUpdate={handleProductUpdate} />
-        </TabsContent>
+
+        {loading ? (
+          <ProductGridSkeleton />
+        ) : (
+          <>
+            <TabsContent value="pending">
+              <ProductGrid products={pendingProducts} onProductUpdate={handleProductUpdate} />
+            </TabsContent>
+            <TabsContent value="approved">
+              <ProductGrid products={approvedProducts} onProductUpdate={handleProductUpdate} />
+            </TabsContent>
+            <TabsContent value="rejected">
+              <ProductGrid products={rejectedProducts} onProductUpdate={handleProductUpdate} />
+            </TabsContent>
+            <TabsContent value="all">
+              <ProductGrid products={allProducts} onProductUpdate={handleProductUpdate} />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -61,6 +75,22 @@ function ProductGrid({ products, onProductUpdate }: { products: Product[], onPro
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} onProductUpdate={onProductUpdate} />
+      ))}
+    </div>
+  );
+}
+
+function ProductGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="space-y-4">
+          <Skeleton className="h-[225px] w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
       ))}
     </div>
   );
