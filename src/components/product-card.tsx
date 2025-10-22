@@ -62,11 +62,15 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const statusInfo = statusConfig[product.status];
   
   const handleApprove = () => {
-    onProductUpdate?.(product.id, { status: 'approved' });
+    if (!firestore) return;
+    const productRef = doc(firestore, 'products', product.id);
+    updateDoc(productRef, { status: 'approved' });
   };
   
   const handleReject = () => {
-    onProductUpdate?.(product.id, { status: 'rejected' });
+    if (!firestore) return;
+    const productRef = doc(firestore, 'products', product.id);
+    updateDoc(productRef, { status: 'rejected' });
   };
 
   const handleManualEnrich = async () => {

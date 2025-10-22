@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -92,16 +93,16 @@ export default function DashboardPage() {
         ) : (
           <>
             <TabsContent value="pending">
-              <ProductGrid products={pendingProducts} onProductUpdate={handleProductUpdate} />
+              <ProductGrid products={pendingProducts} />
             </TabsContent>
             <TabsContent value="approved">
-              <ProductGrid products={approvedProducts} onProductUpdate={handleProductUpdate} />
+              <ProductGrid products={approvedProducts} />
             </TabsContent>
             <TabsContent value="rejected">
-              <ProductGrid products={rejectedProducts} onProductUpdate={handleProductUpdate} />
+              <ProductGrid products={rejectedProducts} />
             </TabsContent>
             <TabsContent value="all">
-              <ProductGrid products={allProducts} onProductUpdate={handleProductUpdate} />
+              <ProductGrid products={allProducts} />
             </TabsContent>
           </>
         )}
@@ -110,14 +111,14 @@ export default function DashboardPage() {
   );
 }
 
-function ProductGrid({ products, onProductUpdate }: { products: Product[], onProductUpdate: (productId: string, updatedProduct: Partial<Product>) => void }) {
+function ProductGrid({ products }: { products: Product[] }) {
   if (products.length === 0) {
     return <div className="text-center text-muted-foreground py-16">No products in this category.</div>
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} onProductUpdate={onProductUpdate} />
+        <ProductCard key={product.id} product={product} onProductUpdate={() => {}} />
       ))}
     </div>
   );

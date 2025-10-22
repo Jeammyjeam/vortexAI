@@ -1,3 +1,4 @@
+
 // DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 'use client';
 import {useEffect, useState, useRef} from 'react';

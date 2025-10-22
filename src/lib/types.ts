@@ -1,3 +1,4 @@
+
 export type ProductStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Product {
