@@ -1,21 +1,54 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useCollection, useFirestore } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ProductCard } from '@/components/product-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Bot, Loader2 } from 'lucide-react';
+import { publishSocialPosts } from '@/ai/flows/social-post-publisher';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
   const { data: products, loading } = useCollection<Product>('products');
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handleProductUpdate = async (productId: string, updatedProduct: Partial<Product>) => {
     if (!firestore) return;
     const productRef = doc(firestore, 'products', productId);
     await updateDoc(productRef, updatedProduct);
+  };
+
+  const handlePublishPosts = async () => {
+    setIsPublishing(true);
+    try {
+      const result = await publishSocialPosts();
+      if (result.publishedPosts.length > 0) {
+        toast({
+          title: 'Publisher Finished',
+          description: `Successfully published ${result.publishedPosts.length} posts.`,
+        });
+      } else {
+        toast({
+          title: 'Publisher Finished',
+          description: 'No posts were due for publishing.',
+        });
+      }
+    } catch (error) {
+      console.error("Publishing failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Publishing Failed',
+        description: 'Could not run the publishing flow.',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
   
   const { pendingProducts, approvedProducts, rejectedProducts, allProducts } = useMemo(() => {
@@ -31,9 +64,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-headline font-bold text-foreground">Command Console</h1>
-        <p className="text-muted-foreground">Oversee and manage AI-driven product discovery.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-headline font-bold text-foreground">Command Console</h1>
+          <p className="text-muted-foreground">Oversee and manage AI-driven product discovery.</p>
+        </div>
+        <Button onClick={handlePublishPosts} disabled={isPublishing}>
+          {isPublishing ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Bot className="mr-2 h-4 w-4" />
+          )}
+          Publish Queued Posts
+        </Button>
       </div>
 
       <Tabs defaultValue="pending" className="space-y-4">
