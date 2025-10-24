@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -30,7 +31,7 @@ const publishSocialPostsFlow = ai.defineFlow(
     console.log('[VORTEX AI] Running social post publisher flow...');
     
     // Get the initialized Firebase Admin instance
-    const admin = getFirebaseAdmin();
+    const admin = await getFirebaseAdmin();
     const db = admin.firestore();
 
     const now = new Date();
