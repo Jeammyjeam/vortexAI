@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -30,7 +29,7 @@ import { useCollection, useFirestore, useDoc } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
-
+import { updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface ProductCardProps {
   product: Product;
@@ -62,15 +61,15 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const statusInfo = statusConfig[product.status];
   
   const handleApprove = () => {
-    if (onProductUpdate) {
-      onProductUpdate(product.id, { status: 'approved' });
-    }
+    if (!firestore) return;
+    const productRef = doc(firestore, 'products', product.id);
+    updateDocumentNonBlocking(productRef, { status: 'approved' });
   };
   
   const handleReject = () => {
-    if (onProductUpdate) {
-      onProductUpdate(product.id, { status: 'rejected' });
-    }
+    if (!firestore) return;
+    const productRef = doc(firestore, 'products', product.id);
+    updateDocumentNonBlocking(productRef, { status: 'rejected' });
   };
 
   const handleManualEnrich = async () => {
@@ -120,13 +119,10 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         engagementAnalytics: 'mock', // Pass engagement data here
       });
 
-      const batch = writeBatch(firestore);
       const postsCollection = collection(firestore, 'social_posts');
       result.scheduledPosts.forEach(post => {
-        const newPostRef = doc(postsCollection);
-        batch.set(newPostRef, post);
+        addDocumentNonBlocking(postsCollection, post);
       });
-      await batch.commit();
 
       toast({
         title: 'Posts Scheduled Successfully',
@@ -240,14 +236,14 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
         </CardFooter>
       )}
     </Card>
-    {onProductUpdate && (
-        <AutoScheduleDialog 
-            isOpen={isScheduleDialogOpen}
-            onOpenChange={setIsScheduleDialogOpen}
-            product={product}
-            onSchedule={handleSchedulePosts}
-        />
-    )}
+    
+    <AutoScheduleDialog 
+        isOpen={isScheduleDialogOpen}
+        onOpenChange={setIsScheduleDialogOpen}
+        product={product}
+        onSchedule={handleSchedulePosts}
+    />
+    
     </TooltipProvider>
   );
 }

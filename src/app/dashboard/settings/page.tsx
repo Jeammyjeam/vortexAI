@@ -7,13 +7,14 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, writeBatch, doc, setDoc } from 'firebase/firestore';
+import { collection, writeBatch, doc } from 'firebase/firestore';
 import { mockProducts } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { AppConfig } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const defaultConfig: AppConfig = {
   id: 'default',
@@ -33,7 +34,7 @@ export default function SettingsPage() {
   const handleConfigChange = async (key: keyof AppConfig, value: any) => {
     if (!firestore) return;
     const configRef = doc(firestore, 'config', 'default');
-    await setDoc(configRef, { [key]: value }, { merge: true });
+    setDocumentNonBlocking(configRef, { [key]: value }, { merge: true });
   };
 
   const handleSeedDatabase = async () => {
@@ -48,21 +49,17 @@ export default function SettingsPage() {
 
     setIsSeeding(true);
     try {
-      const batch = writeBatch(firestore);
       const productsCollection = collection(firestore, 'products');
       
       mockProducts.forEach(product => {
         // We can't use the mock ID, so we let firestore generate one.
         const { id, ...productData } = product;
-        const newProductRef = doc(productsCollection);
-        batch.set(newProductRef, productData);
+        addDocumentNonBlocking(productsCollection, productData);
       });
 
-      await batch.commit();
-
       toast({
-        title: 'Database Seeded',
-        description: `${mockProducts.length} products have been added to Firestore.`,
+        title: 'Database Seeding Started',
+        description: `${mockProducts.length} products are being added to Firestore.`,
       });
     } catch (error) {
       console.error('Error seeding database:', error);

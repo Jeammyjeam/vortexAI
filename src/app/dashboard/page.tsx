@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useCollection, useFirestore } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { ProductCard } from '@/components/product-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Product } from '@/lib/types';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Bot, Loader2 } from 'lucide-react';
 import { publishSocialPosts } from '@/ai/flows/social-post-publisher';
 import { useToast } from '@/hooks/use-toast';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function DashboardPage() {
   const { data: products, loading } = useCollection<Product>('products');
@@ -18,10 +19,10 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const handleProductUpdate = async (productId: string, updatedData: Partial<Product>) => {
+  const handleProductUpdate = (productId: string, updatedData: Partial<Product>) => {
     if (!firestore) return;
     const productRef = doc(firestore, 'products', productId);
-    await updateDoc(productRef, updatedData);
+    updateDocumentNonBlocking(productRef, updatedData);
   };
 
   const handlePublishPosts = async () => {

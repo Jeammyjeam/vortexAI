@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -102,14 +101,16 @@ export function LoginForm() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push('/dashboard');
+      // The onAuthStateChanged listener in useUser will handle the redirect
     } catch (error: any) {
       const authError = error as AuthError;
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: `Error: ${authError.code} - ${authError.message}`,
-      });
+      if (authError.code !== 'auth/popup-closed-by-user') {
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-In Failed',
+          description: `Error: ${authError.code} - ${authError.message}. Ensure Google provider is enabled in Firebase console and this domain is authorized.`,
+        });
+      }
     } finally {
       setIsGoogleLoading(false);
     }
