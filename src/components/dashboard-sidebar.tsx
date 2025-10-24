@@ -21,7 +21,7 @@ import Logo from '@/components/icons/logo';
 
 const DashboardSidebar = () => {
   return (
-    <Sidebar variant="inset" side="left" collapsible="icon" className="border-r border-white/10">
+    <Sidebar variant="inset" side="left" collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 justify-center items-center">
         <Link href="/dashboard" className="flex items-center gap-2">
             <Logo className="w-8 h-8" />

@@ -31,22 +31,30 @@ body {
   }
 
   .dark {
-    --background: 221 57% 8%;
+    --background: 220 30% 6%;
     --foreground: 210 40% 98%;
-    --card: 215 25% 15%;
+    
+    --card: 220 20% 12%;
     --card-foreground: 210 40% 98%;
-    --popover: 221 57% 8%;
+    
+    --popover: 220 30% 6%;
     --popover-foreground: 210 40% 98%;
+    
     --primary: 186 100% 50%;
     --primary-foreground: 221 57% 8%;
+    
     --secondary: 215 25% 27%;
     --secondary-foreground: 210 40% 98%;
+    
     --muted: 215 25% 17%;
     --muted-foreground: 215 20% 65%;
+    
     --accent: 273 82% 56%;
     --accent-foreground: 210 40% 98%;
+    
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    
     --border: 215 25% 27%;
     --input: 215 25% 17%;
     --ring: 186 100% 50%;
@@ -56,6 +64,13 @@ body {
     --chart-3: 215 25% 40%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    --sidebar-background: 220 30% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 15%;
+    --sidebar-accent: 215 25% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-ring: 186 100% 50%;
   }
 }
 
@@ -70,7 +85,7 @@ body {
 
 @layer components {
   .glass-card {
-    @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-lg;
+    @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-lg;
   }
   .btn-satoshi {
     @apply font-satoshi font-bold;
