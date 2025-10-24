@@ -7,30 +7,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import * as admin from 'firebase-admin';
+import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import type { SocialPost } from '@/lib/types';
-
-// This function will initialize the admin SDK only when it's first needed.
-const initializeAdminApp = () => {
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
-
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    console.log('[VORTEX AI] Initializing Firebase Admin with Service Account...');
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    return admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  }
-  
-  // This fallback is for environments like Google Cloud Run/Functions
-  // where ADC are automatically available.
-  console.log('[VORTEX AI] Initializing Firebase Admin with Application Default Credentials...');
-  return admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
-};
 
 
 const PublishSocialPostsOutputSchema = z.object({
@@ -51,8 +29,8 @@ const publishSocialPostsFlow = ai.defineFlow(
   async () => {
     console.log('[VORTEX AI] Running social post publisher flow...');
     
-    // Initialize admin app and get firestore instance inside the flow
-    initializeAdminApp();
+    // Get the initialized Firebase Admin instance
+    const admin = getFirebaseAdmin();
     const db = admin.firestore();
 
     const now = new Date();
