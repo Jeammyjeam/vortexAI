@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  AuthError,
 } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -103,10 +104,11 @@ export function LoginForm() {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (error: any) {
+      const authError = error as AuthError;
       toast({
         variant: 'destructive',
         title: 'Google Sign-In Failed',
-        description: error.message,
+        description: `Error: ${authError.code} - ${authError.message}`,
       });
     } finally {
       setIsGoogleLoading(false);
