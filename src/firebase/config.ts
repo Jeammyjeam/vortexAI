@@ -1,3 +1,4 @@
+
 // DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 import {FirebaseOptions} from 'firebase/app';
 
@@ -10,7 +11,7 @@ try {
   if (!configStr) {
     throw new Error("NEXT_PUBLIC_FIREBASE_CONFIG is not set.");
   }
-  // Remove single quotes that might be wrapping the JSON string
+  // The environment variable might be wrapped in single quotes, remove them.
   const cleanConfigStr = configStr.startsWith("'") && configStr.endsWith("'") 
     ? configStr.slice(1, -1) 
     : configStr;
@@ -18,6 +19,8 @@ try {
   config = JSON.parse(cleanConfigStr);
 } catch (e) {
   console.error("Failed to parse NEXT_PUBLIC_FIREBASE_CONFIG. Make sure it's a valid JSON string. Error:", e);
+  // Default to an empty object to avoid crashing the app on the server.
+  // The client will fail to initialize Firebase, which is expected.
   config = {};
 }
 
