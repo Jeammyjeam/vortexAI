@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Check, X, Sparkles, MoreVertical, Loader2, Send, CalendarClock } from 'lucide-react';
-import { doc, updateDoc, writeBatch, collection } from 'firebase/firestore';
+import { doc, writeBatch, collection } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 import type { Product, ProductStatus, SocialPost, AppConfig } from '@/lib/types';
@@ -62,15 +62,15 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
   const statusInfo = statusConfig[product.status];
   
   const handleApprove = () => {
-    if (!firestore) return;
-    const productRef = doc(firestore, 'products', product.id);
-    updateDoc(productRef, { status: 'approved' });
+    if (onProductUpdate) {
+      onProductUpdate(product.id, { status: 'approved' });
+    }
   };
   
   const handleReject = () => {
-    if (!firestore) return;
-    const productRef = doc(firestore, 'products', product.id);
-    updateDoc(productRef, { status: 'rejected' });
+    if (onProductUpdate) {
+      onProductUpdate(product.id, { status: 'rejected' });
+    }
   };
 
   const handleManualEnrich = async () => {
@@ -158,7 +158,7 @@ export function ProductCard({ product, onProductUpdate }: ProductCardProps) {
           className="object-cover aspect-video transition-transform duration-300 group-hover:scale-105"
         />
         <div className="absolute top-3 right-3 flex gap-2">
-            {onProductUpdate && <Badge variant={statusInfo.variant} className={cn('backdrop-blur-sm', statusInfo.className)}>{statusInfo.label}</Badge>}
+            <Badge variant={statusInfo.variant} className={cn('backdrop-blur-sm', statusInfo.className)}>{statusInfo.label}</Badge>
         </div>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
