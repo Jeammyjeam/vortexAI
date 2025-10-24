@@ -1,113 +1,358 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's public profile information.",
+    "ProductListing": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProductListing",
       "type": "object",
+      "description": "Represents a product listing extracted and processed by the system.",
       "properties": {
-        "displayName": {
+        "id": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "Unique identifier for the product listing."
         },
-        "photoURL": {
+        "title": {
           "type": "string",
-          "format": "uri",
-          "description": "The URL of the user's profile picture."
-        }
-      }
-    },
-    "Product": {
-      "title": "Product",
-      "description": "Represents a product in the store.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "category": { "type": "string" },
-        "price": { "type": "number" },
-        "viralVelocity": { "type": "number" },
-        "status": {
-          "type": "string",
-          "enum": ["pending", "approved", "rejected"]
+          "description": "The title of the product listing."
         },
-        "imageUrl": { "type": "string", "format": "uri" },
-        "imageHint": { "type": "string" },
-        "isHalalCompliant": { "type": ["boolean", "null"] },
-        "complianceReasoning": { "type": ["string", "null"] },
-        "seo": {
-          "type": ["object", "null"],
-          "properties": {
-            "title": { "type": "string" },
-            "description": { "type": "string" },
-            "keywords": { "type": "array", "items": { "type": "string" } }
-          }
+        "description": {
+          "type": "string",
+          "description": "The description of the product listing."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the product belongs to."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the product."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the product price."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the product image.",
+          "format": "uri"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "description": "URL of the original product listing.",
+          "format": "uri"
+        },
+        "extractionDate": {
+          "type": "string",
+          "description": "Date when the product listing was extracted.",
+          "format": "date-time"
+        },
+        "isDuplicate": {
+          "type": "boolean",
+          "description": "Indicates if the listing is a duplicate."
+        },
+        "isComplete": {
+          "type": "boolean",
+          "description": "Indicates if the listing has all required information."
+        },
+        "halalStatus": {
+          "type": "string",
+          "description": "The halal compliance status of the product."
+        },
+        "halalReason": {
+          "type": "string",
+          "description": "Reasoning for the halal status."
         }
-      }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "price",
+        "currency",
+        "imageUrl",
+        "sourceUrl",
+        "extractionDate"
+      ]
     },
     "SocialPost": {
-      "title": "Social Post",
-      "description": "Represents a social media post to be scheduled.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SocialPost",
       "type": "object",
+      "description": "Represents a social media post generated and deployed by the system.",
       "properties": {
-        "productId": { "type": "string", "description": "The ID of the product this post is for." },
-        "productName": { "type": "string", "description": "The name of the product this post is for." },
-        "platform": { "type": "string", "enum": ["X", "Instagram", "TikTok"] },
-        "post": { "type": "string", "description": "The content of the social media post." },
-        "scheduledAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["queued", "posted", "failed"] }
-      },
-      "required": ["productId", "platform", "post", "scheduledAt", "status"]
-    },
-    "AppConfig": {
-      "title": "App Configuration",
-      "description": "Singleton document for application-wide settings.",
-      "type": "object",
-      "properties": {
-        "automationIntensity": {
+        "id": {
           "type": "string",
-          "enum": ["manual", "semi-auto", "full-auto"]
+          "description": "Unique identifier for the social media post."
         },
-        "haramFilterEnabled": {
-          "type": "boolean"
+        "listingId": {
+          "type": "string",
+          "description": "Reference to ProductListing. (Relationship: ProductListing 1:N SocialPost)"
         },
-        "dataSources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "platform": {
+          "type": "string",
+          "description": "The social media platform the post was published on (e.g., X, Instagram, TikTok)."
+        },
+        "caption": {
+          "type": "string",
+          "description": "The caption for the social media post."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image used in the post.",
+          "format": "uri"
+        },
+        "postDateTime": {
+          "type": "string",
+          "description": "Date and time when the post was published.",
+          "format": "date-time"
+        },
+        "engagementMetrics": {
+          "type": "string",
+          "description": "The recorded engagement metrics for the social media post."
         }
-      }
+      },
+      "required": [
+        "id",
+        "listingId",
+        "platform",
+        "caption",
+        "imageUrl",
+        "postDateTime"
+      ]
+    },
+    "AdminActionLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminActionLog",
+      "type": "object",
+      "description": "Represents an action performed by an administrator in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin action log entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N AdminActionLog).  Unique identifier of the admin user who performed the action."
+        },
+        "actionType": {
+          "type": "string",
+          "description": "The type of action performed (e.g., approve, reject, modify)."
+        },
+        "actionDateTime": {
+          "type": "string",
+          "description": "Date and time when the action was performed.",
+          "format": "date-time"
+        },
+        "affectedListingId": {
+          "type": "string",
+          "description": "Reference to ProductListing. (Relationship: ProductListing 1:N AdminActionLog). The product listing ID that was affected by the action, if applicable."
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional details about the action performed."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "actionType",
+        "actionDateTime"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the admin dashboard.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role within the system (e.g., admin, moderator)."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "role"
+      ]
+    },
+    "AnalyticsData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AnalyticsData",
+      "type": "object",
+      "description": "Represents analytics data for product listings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the analytics data."
+        },
+        "listingId": {
+          "type": "string",
+          "description": "Reference to ProductListing. (Relationship: ProductListing 1:1 AnalyticsData)"
+        },
+        "engagementHeatmap": {
+          "type": "string",
+          "description": "Stores engagement heatmap data (e.g., JSON or other format)."
+        },
+        "priceVolatility": {
+          "type": "number",
+          "description": "Price volatility metric for the product listing."
+        },
+        "viralVelocity": {
+          "type": "number",
+          "description": "Viral velocity metric for the product listing."
+        },
+        "dateAnalyzed": {
+          "type": "string",
+          "description": "Date and time when the analytics data was calculated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "listingId",
+        "engagementHeatmap",
+        "priceVolatility",
+        "viralVelocity",
+        "dateAnalyzed"
+      ]
     }
   },
   "auth": {
     "providers": [
-      "email",
-      "google"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/productListings/{listingId}",
+        "definition": {
+          "entityName": "ProductListing",
+          "schema": {
+            "$ref": "#/backend/entities/ProductListing"
+          },
+          "description": "Stores product listing data. The 'id' field serves as the document ID.",
+          "params": [
+            {
+              "name": "listingId",
+              "description": "The unique identifier of the product listing."
+            }
+          ]
+        }
       },
-      "description": "Stores public information for each user."
-    },
-    "/products": {
-      "schema": {
-        "$ref": "#/backend/entities/Product"
+      {
+        "path": "/productListings/{listingId}/socialPosts/{postId}",
+        "definition": {
+          "entityName": "SocialPost",
+          "schema": {
+            "$ref": "#/backend/entities/SocialPost"
+          },
+          "description": "Stores social posts associated with a product listing. The listingId of parent is denormalized into the social post document.",
+          "params": [
+            {
+              "name": "listingId",
+              "description": "The unique identifier of the parent product listing."
+            },
+            {
+              "name": "postId",
+              "description": "The unique identifier of the social media post."
+            }
+          ]
+        }
       },
-      "description": "Stores all products for the e-commerce store."
-    },
-    "/social_posts": {
-      "schema": {
-        "$ref": "#/backend/entities/SocialPost"
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data. The 'id' field serves as the document ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
       },
-      "description": "Stores all scheduled social media posts."
-    },
-    "/config/default": {
-       "schema": {
-        "$ref": "#/backend/entities/AppConfig"
+      {
+        "path": "/users/{userId}/adminActionLogs/{logId}",
+        "definition": {
+          "entityName": "AdminActionLog",
+          "schema": {
+            "$ref": "#/backend/entities/AdminActionLog"
+          },
+          "description": "Stores log entries for admin actions performed by a user. Includes denormalized userId for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who performed the action."
+            },
+            {
+              "name": "logId",
+              "description": "The unique identifier of the admin action log entry."
+            }
+          ]
+        }
       },
-      "description": "Stores application-wide configuration settings."
-    }
+      {
+        "path": "/productListings/{listingId}/analyticsData/{analyticsId}",
+        "definition": {
+          "entityName": "AnalyticsData",
+          "schema": {
+            "$ref": "#/backend/entities/AnalyticsData"
+          },
+          "description": "Stores analytics data for product listings.",
+          "params": [
+            {
+              "name": "listingId",
+              "description": "The unique identifier of the product listing."
+            },
+            {
+              "name": "analyticsId",
+              "description": "The unique identifier of the analytics data."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Documents existence grants admin role. Authorization rules check for the existence of this document to grant admin privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the admin user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the VORTEX AI GRID application, focusing on autonomous trend extraction, cognitive data refinement, and AI-driven social media posting while ensuring data integrity, security, and scalability. The structure prioritizes authorization independence by denormalizing data where necessary, enabling robust security rules without complex `get()` calls. It also follows the principle of Structural Segregation by using dedicated collections for different types of data. Access control is managed through path-based ownership where applicable and membership maps for collaborative data. Below is a description of how each entity is stored and secured.\n\n*   **/productListings/{listingId}**: Stores product listing data extracted from various sources. Analytics data is stored in a subcollection (see below).\n*   **/socialPosts/{postId}**: Stores social posts associated with product listings.\n*   **/users/{userId}**: Stores user data. Admin actions are stored in a subcollection (see below).\n*   **/adminActionLogs/{logId}**: This subcollection stores log entries for admin actions, nested under the corresponding user document. Includes denormalized userId for independent authorization.\n*   **/analyticsData/{analyticsId}**: Stores analytics data for product listings. This is stored as a subcollection of `productListings` to allow simpler security rules.\n*   **/roles_admin/{userId}**: Documents existence grants admin role. Authorization rules check for the existence of this document to grant admin privileges.\n\nThis design achieves Authorization Independence by storing authorization-related data (e.g., `userId` in `adminActionLogs`, and roles via `/roles_admin/{userId}`) directly within the documents or using existence checks, avoiding the need for complex hierarchical `get()` calls in security rules. It supports QAPs (Rules are not Filters) by segregating data based on access requirements and using membership models where applicable, ensuring that `list` operations can be securely performed without exposing unauthorized data. Finally, invariants are enforced through the structure itself, such as using hierarchical paths for user-owned data to maintain ownership integrity."
   }
 }

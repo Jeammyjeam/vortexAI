@@ -1,45 +1,93 @@
-// DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 'use client';
-import {useEffect, useState, useRef} from 'react';
-import {doc, onSnapshot} from 'firebase/firestore';
+    
+import { useState, useEffect } from 'react';
+import {
+  DocumentReference,
+  onSnapshot,
+  DocumentData,
+  FirestoreError,
+  DocumentSnapshot,
+} from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
-import {useFirestore} from '@/firebase';
-import {errorEmitter} from '@/firebase/error-emitter';
-import {FirestorePermissionError} from '@/firebase/errors';
+/** Utility type to add an 'id' field to a given type T. */
+type WithId<T> = T & { id: string };
 
-export function useDoc<T extends {id: string}>(path: string) {
-  const firestore = useFirestore();
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+/**
+ * Interface for the return value of the useDoc hook.
+ * @template T Type of the document data.
+ */
+export interface UseDocResult<T> {
+  data: WithId<T> | null; // Document data with ID, or null.
+  isLoading: boolean;       // True if loading.
+  error: FirestoreError | Error | null; // Error object, or null.
+}
 
-  const pathRef = useRef(path);
+/**
+ * React hook to subscribe to a single Firestore document in real-time.
+ * Handles nullable references.
+ * 
+ * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
+ * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
+ * references
+ *
+ *
+ * @template T Optional type for document data. Defaults to any.
+ * @param {DocumentReference<DocumentData> | null | undefined} docRef -
+ * The Firestore DocumentReference. Waits if null/undefined.
+ * @returns {UseDocResult<T>} Object with data, isLoading, error.
+ */
+export function useDoc<T = any>(
+  memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+): UseDocResult<T> {
+  type StateDataType = WithId<T> | null;
+
+  const [data, setData] = useState<StateDataType>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<FirestoreError | Error | null>(null);
+
   useEffect(() => {
-    pathRef.current = path;
-  }, [path]);
+    if (!memoizedDocRef) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
-  useEffect(() => {
-    if (!firestore) return;
+    setIsLoading(true);
+    setError(null);
+    // Optional: setData(null); // Clear previous data instantly
 
-    const docRef = doc(firestore, pathRef.current);
     const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
-        setData({ ...snapshot.data(), id: snapshot.id } as T);
-        setLoading(false);
+      memoizedDocRef,
+      (snapshot: DocumentSnapshot<DocumentData>) => {
+        if (snapshot.exists()) {
+          setData({ ...(snapshot.data() as T), id: snapshot.id });
+        } else {
+          // Document does not exist
+          setData(null);
+        }
+        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
+        setIsLoading(false);
       },
-      (error) => {
-        console.error(error);
-        const permissionError = new FirestorePermissionError({
-          path: pathRef.current,
+      (error: FirestoreError) => {
+        const contextualError = new FirestorePermissionError({
           operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setLoading(false);
+          path: memoizedDocRef.path,
+        })
+
+        setError(contextualError)
+        setData(null)
+        setIsLoading(false)
+
+        // trigger global error propagation
+        errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [firestore]);
+  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
 
-  return {data, loading};
+  return { data, isLoading, error };
 }

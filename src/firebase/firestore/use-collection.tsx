@@ -1,142 +1,114 @@
-
-// DO NOT MODIFY. This file is auto-generated and managed by Firebase Studio.
 'use client';
-import {useEffect, useState, useRef} from 'react';
+
+import { useState, useEffect } from 'react';
 import {
-  collection,
-  query,
-  onSnapshot,
   Query,
+  onSnapshot,
   DocumentData,
-  doc,
-  updateDoc,
-  writeBatch,
-  getDoc,
+  FirestoreError,
+  QuerySnapshot,
+  CollectionReference,
 } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
-import {useFirestore} from '@/firebase';
-import {errorEmitter} from '@/firebase/error-emitter';
-import {FirestorePermissionError} from '@/firebase/errors';
-import type { Product, AppConfig } from '@/lib/types';
-import { enrichProduct } from '@/lib/product-actions';
-import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
-import { engagementHeatmapData } from '@/lib/mock-data';
+/** Utility type to add an 'id' field to a given type T. */
+export type WithId<T> = T & { id: string };
 
+/**
+ * Interface for the return value of the useCollection hook.
+ * @template T Type of the document data.
+ */
+export interface UseCollectionResult<T> {
+  data: WithId<T>[] | null; // Document data with ID, or null.
+  isLoading: boolean;       // True if loading.
+  error: FirestoreError | Error | null; // Error object, or null.
+}
 
-export function useCollection<T extends {id: string}>(path: string) {
-  const firestore = useFirestore();
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const previousData = useRef<T[]>([]);
-  const processedEnrichmentIds = useRef(new Set<string>());
-  const processedSchedulingIds = useRef(new Set<string>());
+/* Internal implementation of Query:
+  https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
+*/
+export interface InternalQuery extends Query<DocumentData> {
+  _query: {
+    path: {
+      canonicalString(): string;
+      toString(): string;
+    }
+  }
+}
 
-  const pathRef = useRef(path);
+/**
+ * React hook to subscribe to a Firestore collection or query in real-time.
+ * Handles nullable references/queries.
+ * 
+ *
+ * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
+ * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
+ * references
+ *  
+ * @template T Optional type for document data. Defaults to any.
+ * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
+ * The Firestore CollectionReference or Query. Waits if null/undefined.
+ * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
+ */
+export function useCollection<T = any>(
+    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+): UseCollectionResult<T> {
+  type ResultItemType = WithId<T>;
+  type StateDataType = ResultItemType[] | null;
+
+  const [data, setData] = useState<StateDataType>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<FirestoreError | Error | null>(null);
+
   useEffect(() => {
-    pathRef.current = path;
-  }, [path]);
+    if (!memoizedTargetRefOrQuery) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
-  useEffect(() => {
-    if (!firestore) return;
+    setIsLoading(true);
+    setError(null);
 
-    const coll = collection(firestore, pathRef.current);
-    const q = query(coll);
-
+    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
-      q,
-      async (snapshot) => {
-        const newData = snapshot.docs.map((doc) => ({...doc.data(), id: doc.id})) as T[];
-        setData(newData);
-        setLoading(false);
-
-        // --- Autonomous Logic ---
-        if (path === 'products') {
-          const configRef = doc(firestore, 'config', 'default');
-          const configSnap = await getDoc(configRef);
-          const config = configSnap.data() as AppConfig | undefined;
-
-          // Do not run autonomous logic if disabled
-          if (!config || config.automationIntensity !== 'full-auto') {
-            previousData.current = newData;
-            return;
-          }
-
-          const products = newData as unknown as Product[];
-          const prevProducts = previousData.current as unknown as Product[];
-
-          // --- Autonomous Enrichment ---
-          const productsToEnrich = products.filter(p => 
-            p.status === 'pending' && 
-            !processedEnrichmentIds.current.has(p.id) && 
-            p.isHalalCompliant === null
-          );
-
-          if (productsToEnrich.length > 0) {
-            console.log(`[VORTEX AI] Detected ${productsToEnrich.length} new products to process for enrichment.`);
-            productsToEnrich.forEach(product => {
-              processedEnrichmentIds.current.add(product.id);
-              console.log(`[VORTEX AI] Auto-enriching product: ${product.name}`);
-              enrichProduct(firestore, product, { haramFilterEnabled: config.haramFilterEnabled }).catch(err => {
-                console.error(`[VORTEX AI] Failed to auto-enrich product ${product.id}:`, err);
-                processedEnrichmentIds.current.delete(product.id);
-              });
-            });
-          }
-
-          // --- Autonomous Scheduling ---
-          const newlyApprovedProducts = products.filter(p => {
-            if (p.status !== 'approved' || processedSchedulingIds.current.has(p.id)) {
-              return false;
-            }
-            const prevProduct = prevProducts.find(prev => prev.id === p.id);
-            return !prevProduct || (prevProduct.status !== 'approved');
-          });
-
-          if (newlyApprovedProducts.length > 0) {
-            console.log(`[VORTEX AI] Detected ${newlyApprovedProducts.length} newly approved products for scheduling.`);
-            newlyApprovedProducts.forEach(product => {
-              processedSchedulingIds.current.add(product.id);
-              console.log(`[VORTEX AI] Auto-scheduling posts for product: ${product.name}`);
-              
-              autoSchedulePosts({
-                productId: product.id,
-                productName: product.name,
-                productDescription: product.seo?.description || `Check out this great product: ${product.name}`,
-                targetPlatforms: ['X', 'Instagram', 'TikTok'],
-                engagementAnalytics: JSON.stringify(engagementHeatmapData),
-              }).then(async (result) => {
-                if (!firestore) return;
-                const batch = writeBatch(firestore);
-                const postsCollection = collection(firestore, 'social_posts');
-                result.scheduledPosts.forEach(post => {
-                  const newPostRef = doc(postsCollection);
-                  batch.set(newPostRef, post);
-                });
-                await batch.commit();
-
-                console.log(`[VORTEX AI] Successfully scheduled posts for ${product.name}`);
-              }).catch(err => {
-                console.error(`[VORTEX AI] Failed to auto-schedule posts for product ${product.id}:`, err);
-                processedSchedulingIds.current.delete(product.id);
-              });
-            });
-          }
+      memoizedTargetRefOrQuery,
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const results: ResultItemType[] = [];
+        for (const doc of snapshot.docs) {
+          results.push({ ...(doc.data() as T), id: doc.id });
         }
-        previousData.current = newData;
+        setData(results);
+        setError(null);
+        setIsLoading(false);
       },
-      (error) => {
-        console.error(error);
-        const permissionError = new FirestorePermissionError({
-          path: pathRef.current,
+      (error: FirestoreError) => {
+        // This logic extracts the path from either a ref or a query
+        const path: string =
+          memoizedTargetRefOrQuery.type === 'collection'
+            ? (memoizedTargetRefOrQuery as CollectionReference).path
+            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+
+        const contextualError = new FirestorePermissionError({
           operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setLoading(false);
+          path,
+        })
+
+        setError(contextualError)
+        setData(null)
+        setIsLoading(false)
+
+        // trigger global error propagation
+        errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [firestore, path]);
-
-  return {data, loading};
+  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+  }
+  return { data, isLoading, error };
 }
