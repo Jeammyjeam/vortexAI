@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { initiateAnonymousSignIn, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -81,18 +82,11 @@ export function LoginForm() {
     e.preventDefault();
     if (!auth) return;
     setIsLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Failed',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    initiateEmailSignIn(auth, email, password);
+    // The useUser hook will handle the redirect on successful login.
+    // We only handle the error case here.
+    // This is a simplified example; you might want to listen for specific errors.
+    setTimeout(() => setIsLoading(false), 2000); // Reset loading state after a delay
   };
 
   const handleGoogleLogin = async () => {
@@ -101,14 +95,14 @@ export function LoginForm() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener in useUser will handle the redirect
+      // The onAuthStateChanged listener in useUser will handle the redirect.
     } catch (error: any) {
       const authError = error as AuthError;
       if (authError.code !== 'auth/popup-closed-by-user') {
         toast({
           variant: 'destructive',
           title: 'Google Sign-In Failed',
-          description: `Error: ${authError.code} - ${authError.message}. Ensure Google provider is enabled in Firebase console and this domain is authorized.`,
+          description: `Error: ${authError.code} - ${authError.message}. Ensure the Google provider is enabled in Firebase console and this domain is authorized.`,
         });
       }
     } finally {
