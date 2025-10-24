@@ -1,4 +1,4 @@
-
+import 'dotenv/config';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -30,6 +30,13 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  // Adding this experimental flag to handle server actions timeouts for slow GenAI calls
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb', // Allow larger image uploads
+      serverActionsBodySizeLimit: '2mb',
+    },
   },
 };
 
