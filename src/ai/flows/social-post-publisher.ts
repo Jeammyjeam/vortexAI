@@ -8,13 +8,22 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import * as admin from 'firebase-admin';
-import { SocialPost } from '@/lib/types';
+import type { SocialPost } from '@/lib/types';
 
 // Initialize Firebase Admin SDK if it hasn't been already.
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } else {
+    // This will likely fail in production if GOOGLE_APPLICATION_CREDENTIALS is not set.
+    // Added for robustness, but the service account key is preferred.
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+  }
 }
 const db = admin.firestore();
 
