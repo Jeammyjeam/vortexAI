@@ -18,9 +18,10 @@ const initializeAdminApp = () => {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
+      console.log('[VORTEX AI] Firebase Admin with Service Account initialized successfully.');
       return;
     } catch (error) {
-        console.error('[VORTEX AI] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
+        console.error('[VORTEX AI] Failed to parse or use FIREBASE_SERVICE_ACCOUNT_KEY:', error);
     }
   } 
   
@@ -29,6 +30,7 @@ const initializeAdminApp = () => {
   admin.initializeApp({
     credential: admin.credential.applicationDefault(),
   });
+   console.log('[VORTEX AI] Firebase Admin with Application Default Credentials initialized successfully.');
 };
 
 
