@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ export default function Home() {
           <Button size="lg" onClick={() => router.push('/dashboard')} className="group">
             Access Command Console <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
-          <Button size="lg" variant="outline" onClick={() => alert('Learning more!')}>
+          <Button size="lg" variant="outline" onClick={() => alert('Live Demo Coming Soon!')}>
             <Zap className="h-4 w-4 mr-2" />
             Live Demo
           </Button>
