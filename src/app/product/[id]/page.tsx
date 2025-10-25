@@ -5,7 +5,7 @@ import { db } from '@/firebase/server'; // We need a server-side admin instance
 import { Product } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, ExternalLink, XCircle } from 'lucide-react';
+import { DollarSign, ExternalLink, XCircle, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -96,7 +96,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                     </div>
                     {/* Details Column */}
                     <div>
-                        <Badge variant={getStatusVariant(product.listing_status)} className="capitalize mb-2">{product.listing_status.replace('_', ' ')}</Badge>
+                        <Badge variant={getStatusVariant(product.listing_status)} className="capitalize mb-2">{product.listing_status.replace(/_/g, ' ')}</Badge>
                         <h1 className="text-3xl lg:text-4xl font-bold font-orbitron">{product.enriched_fields?.seo_title || product.title}</h1>
                         <a href={product.source_url} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 mt-1">
                             {product.source_domain} <ExternalLink className="h-3 w-3"/>
@@ -113,6 +113,19 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                             {product.enriched_fields?.seo_description || product.description}
                         </p>
                         
+                        {product.halal_status && product.halal_status === 'compliant' && (
+                             <Card className="mt-6 bg-green-600/10 border-green-500/30">
+                                <CardHeader>
+                                    <CardTitle className="text-green-400 flex items-center gap-2"><CheckCircle className="h-5 w-5"/> Halal Compliant</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-green-400/80">
+                                        {product.halal_reasoning}
+                                    </p>
+                                </CardContent>
+                             </Card>
+                        )}
+
                         {product.halal_status && product.halal_status !== 'compliant' && (
                              <Card className="mt-6 bg-destructive/10 border-destructive/30">
                                 <CardHeader>
@@ -120,10 +133,23 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-sm text-destructive-foreground/80">
-                                        <strong className="capitalize">{product.halal_status}:</strong> {product.halal_reasoning}
+                                        <strong className="capitalize">{product.halal_status}:</strong> {product.halal_reasoning || product.rejection_reason}
                                     </p>
                                 </CardContent>
                              </Card>
+                        )}
+
+                        {product.listing_status.startsWith('failed') && product.error_message && (
+                            <Card className="mt-6 bg-amber-500/10 border-amber-500/30">
+                                <CardHeader>
+                                    <CardTitle className="text-amber-400 flex items-center gap-2"><XCircle className="h-5 w-5"/> System Error</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-amber-400/80 font-mono break-all">
+                                        {product.error_message}
+                                    </p>
+                                </CardContent>
+                            </Card>
                         )}
                         
                          {/* Admin Action Bar */}
@@ -137,3 +163,5 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         </div>
     );
 }
+
+    

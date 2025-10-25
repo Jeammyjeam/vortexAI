@@ -51,7 +51,7 @@ exports.onProductCreate = functions.firestore
         Analyze the following product data:
         Title: ${product.title}
         Description: ${product.description}
-        Category: ${product.source_category || "general"}
+        Category: ${product.category_name || "general"}
 
         Tasks:
         1.  **Halal Classification**: Determine if the product is 'compliant', 'non-compliant' (e.g., alcohol, pork, gambling, inappropriate imagery), or 'indeterminate'. Provide a brief reasoning.
@@ -87,7 +87,12 @@ exports.onProductCreate = functions.firestore
         },
         halal_status: result.halal_status,
         halal_reasoning: result.halal_reasoning,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
       };
+      
+      if (newStatus === 'rejected') {
+        updatePayload.rejection_reason = result.halal_reasoning;
+      }
 
       // 5. Update Firestore
       await db.collection("products").doc(productId).update(updatePayload);
@@ -95,10 +100,11 @@ exports.onProductCreate = functions.firestore
 
     } catch (error) {
       console.error(`[Enrichment] Failed for product ${productId}:`, error);
-      // Optionally, update status to 'failed_enrichment'
+      // Update status to 'failed_enrichment'
       await db.collection("products").doc(productId).update({
           listing_status: "failed_enrichment",
-          error_message: error.message || "An unknown error occurred.",
+          error_message: error.message || "An unknown error occurred during enrichment.",
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
   });
@@ -139,9 +145,9 @@ exports.onProductApprove = functions.firestore
         const shopifyProduct = {
             product: {
                 title: newValue.enriched_fields.seo_title || newValue.title,
-                body_html: newValue.description,
+                body_html: newValue.enriched_fields.seo_description || newValue.description,
                 vendor: newValue.source_domain,
-                status: "draft", // Create as draft first
+                status: "draft", // Create as draft first for final review in Shopify
                 images: newValue.images.map(url => ({ src: url.replace("gs://", "https://storage.googleapis.com/") }))
             }
         };
@@ -165,15 +171,20 @@ exports.onProductApprove = functions.firestore
             listing_status: "published",
             shopify_product_id: createdProduct.id.toString(),
             published_at: admin.firestore.FieldValue.serverTimestamp(),
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
         });
         
         console.log(`[Shopify] Successfully published product ${productId} to Shopify with ID: ${createdProduct.id}`);
 
     } catch (error) {
-        console.error(`[Shopify] Failed to publish product ${productId}:`, error.response ? error.response.data : error.message);
+        const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
+        console.error(`[Shopify] Failed to publish product ${productId}:`, errorMessage);
         await db.collection("products").doc(productId).update({
             listing_status: "failed_publish",
-            error_message: error.response ? JSON.stringify(error.response.data) : "An unknown error occurred.",
+            error_message: errorMessage || "An unknown error occurred during Shopify publish.",
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
         });
     }
   });
+
+    
