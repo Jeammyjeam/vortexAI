@@ -26,8 +26,8 @@ async function getProduct(id: string): Promise<Product | null> {
         const productData: Product = {
             id: docSnap.id,
             ...data,
-            created_at: data.created_at?.toDate(),
-            updated_at: data.updated_at?.toDate(),
+            created_at: data.created_at?.toDate() || new Date(),
+            updated_at: data.updated_at?.toDate() || new Date(),
             enriched_at: data.enriched_at ? data.enriched_at.toDate() : undefined,
             published_at: data.published_at ? data.published_at.toDate() : undefined,
         } as Product;
@@ -95,7 +95,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                     </div>
                     {/* Details Column */}
                     <div>
-                        <Badge variant={getStatusVariant(product.listing_status)} className="capitalize mb-2">{product.listing_status}</Badge>
+                        <Badge variant={getStatusVariant(product.listing_status)} className="capitalize mb-2">{product.listing_status.replace('_', ' ')}</Badge>
                         <h1 className="text-3xl lg:text-4xl font-bold font-orbitron">{product.enriched_fields?.seo_title || product.title}</h1>
                         <a href={product.source_url} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 mt-1">
                             {product.source_domain} <ExternalLink className="h-3 w-3"/>

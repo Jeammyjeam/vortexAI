@@ -13,26 +13,29 @@ export default function DashboardPage() {
   const router = useRouter();
   const firestore = useFirestore();
 
+  // 1. Redirect unauthenticated users immediately.
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
+  // 2. Only create the query if the user is authenticated.
   const productsQuery = useMemoFirebase(
     () =>
-      firestore
+      firestore && user // <-- Ensure user exists before creating the query
         ? query(
             collection(firestore as Firestore, 'products'),
             orderBy('created_at', 'desc')
           )
-        : null,
-    [firestore]
+        : null, // <-- Return null if not ready
+    [firestore, user] // <-- Add user as a dependency
   );
 
-  const { data: products, isLoading } = useCollection<Product>(productsQuery);
+  const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
-  if (isUserLoading || isLoading) {
+  // 3. Handle all loading states cleanly.
+  if (isUserLoading || areProductsLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-foreground font-orbitron">Loading Command Console...</div>
@@ -40,6 +43,8 @@ export default function DashboardPage() {
     );
   }
 
+  // If the effect above hasn't redirected yet, we might still not have a user.
+  // This prevents a flash of the "empty" state before redirection.
   if (!user) {
     return null;
   }
