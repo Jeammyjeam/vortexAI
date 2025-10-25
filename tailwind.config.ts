@@ -21,7 +21,6 @@ const config = {
       fontFamily: {
         inter: ['var(--font-inter)'],
         orbitron: ['var(--font-orbitron)'],
-        satoshi: ['Satoshi', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

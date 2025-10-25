@@ -73,8 +73,8 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                     </div>
                 ) : (
                     <div className="text-center py-20 bg-card rounded-lg border border-dashed border-secondary">
-                        <p className="text-muted-foreground font-inter">No products found in this category.</p>
-                        <p className="text-sm text-muted-foreground/50 mt-2 font-satoshi">The scraper may be running or no products have been discovered for this category yet.</p>
+                        <p className="text-muted-foreground">No products found in this category.</p>
+                        <p className="text-sm text-muted-foreground/50 mt-2">The scraper may be running or no products have been discovered for this category yet.</p>
                     </div>
                 )}
             </main>

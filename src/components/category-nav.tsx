@@ -40,7 +40,7 @@ export function CategoryNav() {
     
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold font-satoshi mr-2 text-muted-foreground">Browse by Category:</h3>
+            <h3 className="text-sm font-semibold mr-2 text-muted-foreground">Browse by Category:</h3>
             <Button variant="ghost" size="sm" asChild>
                 <Link href="/dashboard">
                     <LayoutGrid className="h-4 w-4 mr-2" />

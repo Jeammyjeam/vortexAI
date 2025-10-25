@@ -46,7 +46,7 @@ export default function Header() {
           <div className="h-9 w-24 animate-pulse rounded-md bg-secondary" />
         ) : user ? (
           <>
-            <Button variant="ghost" onClick={() => router.push('/dashboard')} className="font-satoshi">Dashboard</Button>
+            <Button variant="ghost" onClick={() => router.push('/dashboard')}>Dashboard</Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -59,17 +59,17 @@ export default function Header() {
               <DropdownMenuContent className="w-56 glassmorphic" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none font-satoshi">{user.displayName || 'Operator'}</p>
-                    <p className="text-xs leading-none text-muted-foreground font-satoshi">{user.email}</p>
+                    <p className="text-sm font-medium leading-none">{user.displayName || 'Operator'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="font-satoshi">Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </>
         ) : (
-          <Button variant="outline" onClick={() => router.push('/login')} className="font-satoshi">
+          <Button variant="outline" onClick={() => router.push('/login')}>
             Operator Login
           </Button>
         )}

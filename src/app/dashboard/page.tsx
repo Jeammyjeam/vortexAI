@@ -76,8 +76,8 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="text-center py-20 bg-card rounded-lg border border-dashed border-secondary">
-            <p className="text-muted-foreground font-inter">No product listings found.</p>
-            <p className="text-sm text-muted-foreground/50 mt-2 font-satoshi">The grid is empty. The scraper may be running or no products have been discovered yet.</p>
+            <p className="text-muted-foreground">No product listings found.</p>
+            <p className="text-sm text-muted-foreground/50 mt-2">The grid is empty. The scraper may be running or no products have been discovered yet.</p>
           </div>
         )}
       </main>

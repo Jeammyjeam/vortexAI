@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CheckCircle, DollarSign, Tag, XCircle, ShoppingCart } from 'lucide-react';
+import { DollarSign, ShoppingCart } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { useRouter } from 'next/navigation';
@@ -62,26 +62,26 @@ export function ProductCard({ product }: ProductCardProps) {
             variant={getStatusVariant(product.listing_status)}
             className="absolute top-2 right-2 capitalize"
         >
-            {product.listing_status}
+            {product.listing_status.replace(/_/g, ' ')}
         </Badge>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <p className="text-sm text-muted-foreground font-inter line-clamp-2">
+        <p className="text-sm text-muted-foreground line-clamp-2">
           {product.enriched_fields?.seo_description || product.description}
         </p>
         <div className="flex items-center gap-4 mt-4 text-sm">
             <div className="flex items-center gap-1.5 text-primary">
                 <DollarSign className="h-4 w-4" />
-                <span className="font-bold font-satoshi">{product.price?.toFixed(2)} {product.currency}</span>
+                <span className="font-bold">{product.price?.toFixed(2)} {product.currency}</span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground">
                  <ShoppingCart className="h-4 w-4" />
-                <span className="font-satoshi">{product.source_domain}</span>
+                <span>{product.source_domain}</span>
             </div>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button variant="outline" className="w-full font-satoshi">Review & Approve</Button>
+        <Button variant="outline" className="w-full">Review & Approve</Button>
       </CardFooter>
     </Card>
   );

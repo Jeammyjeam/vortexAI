@@ -38,7 +38,7 @@ export function LoginForm() {
         <Card className="mx-auto max-w-sm w-full glassmorphic">
             <CardHeader>
                 <CardTitle className="text-2xl font-orbitron">Operator Login</CardTitle>
-                <CardDescription className="font-inter">Enter your credentials to access the Command Console</CardDescription>
+                <CardDescription>Enter your credentials to access the Command Console</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid gap-4">
@@ -65,14 +65,14 @@ export function LoginForm() {
                             disabled={isSigningIn}
                         />
                     </div>
-                    <Button type="submit" className="w-full font-satoshi" onClick={handleEmailSignIn} disabled={isSigningIn}>
+                    <Button type="submit" className="w-full" onClick={handleEmailSignIn} disabled={isSigningIn}>
                         {isSigningIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Authenticate
                     </Button>
                     <Separator className='my-2 bg-border/50' />
                     <Button
                         variant="outline"
-                        className="w-full font-satoshi"
+                        className="w-full"
                         onClick={handleGoogleSignIn}
                         disabled={isSigningIn}
                     >
