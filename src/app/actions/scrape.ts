@@ -1,22 +1,14 @@
+
 'use server';
 
 import { auth } from '@/firebase/server';
 import { GoogleAuth } from 'google-auth-library';
-import { headers } from 'next/headers';
 
-export async function startScraper(): Promise<{ success: boolean, message?: string, error?: string }> {
+export async function startScraper(idToken: string): Promise<{ success: boolean, message?: string, error?: string }> {
   try {
     // 1. Verify the user is an authenticated admin on the server-side
-    const headersList = headers();
-    const authorization = headersList.get('authorization');
-
-    if (!authorization) {
-        throw new Error('Authorization header missing. You must be logged in.');
-    }
-
-    const idToken = authorization.split('Bearer ')[1];
     if (!idToken) {
-        throw new Error('Bearer token missing.');
+        throw new Error('Authentication token missing. You must be logged in.');
     }
 
     const decodedToken = await auth.verifyIdToken(idToken);
@@ -44,7 +36,9 @@ export async function startScraper(): Promise<{ success: boolean, message?: stri
     console.log("Scraper service responded with status:", response.status);
 
     if (response.status !== 202) {
-        throw new Error(`Scraper service returned an unexpected status: ${response.status}`);
+        const responseData = response.data as any;
+        const errorMessage = responseData?.message || `Scraper service returned an unexpected status: ${response.status}`;
+        throw new Error(errorMessage);
     }
 
     return { success: true, message: "Scraper job started successfully." };

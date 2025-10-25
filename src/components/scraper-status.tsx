@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useDoc, useUser, useMemoFirebase } from '@/firebase';
@@ -32,7 +33,9 @@ export function ScraperStatus() {
 
         startTransition(async () => {
             try {
-                const result = await startScraper();
+                // Get the user's ID token to pass to the server action for verification
+                const idToken = await user.getIdToken(true);
+                const result = await startScraper(idToken);
 
                 if (result.error) {
                     throw new Error(result.error);
