@@ -1,96 +1,131 @@
 /**
- * @file Overview
- * This ruleset enforces a mixed security model, allowing public read access to product data while restricting write access to authorized users.
- * User data is strictly private, accessible only to the owner. Schedules and Audit Logs are only accessible to authorized users.
+ * @fileoverview Firestore Security Rules for the Autonomous AI Store.
  *
- * @dataStructure
- * - /products/{productId}: Publicly readable product information. Write access controlled by authorization.
- * - /users/{userId}: Private user profiles, accessible only to the user.
- * - /schedules/{scheduleId}: Data about scheduled social media posts. Requires authentication for access.
- * - /audit/{auditId}: Audit logs of system actions, read and write access controlled by authorization.
+ * Core Philosophy:
+ * This ruleset employs a hybrid security model: public read access for product listings,
+ * with restricted write access based on user authentication and admin roles.
+ * User data is strictly private, accessible only to the user and admins.
+ * Audit logs are write-only (from trusted server environments).
  *
- * @keySecurityDecisions
- * - Public Read Access for Products: The `products` collection is readable by all users, including unauthenticated users. This is intended for showcasing products.
- * - Owner-Only Access for Users: The `users` collection enforces strict ownership. Each user can only access their own document. User listing is disallowed.
- * - Authenticated Access for Schedules: Requires user authentication to access schedules.
- * - Authenticated Access for Audit Logs: Requires user authentication to access audit logs.
+ * Data Structure:
+ * - /products/{productId}: Product information, publicly readable.
+ * - /users/{userId}: User profiles, private to the user.
+ * - /schedules/{scheduleId}: Scheduled tasks, restricted to admins.
+ * - /audit/{auditId}: Audit logs, append-only by trusted server.
+ *
+ * Key Security Decisions:
+ * - Public product listing: Allows anonymous browsing.
+ * - Admin role enforcement: Restricts write access to critical collections.
+ * - Audit logs: Append-only for security and compliance.
+ * - No user listing: Prevents enumeration of users.
+ *
+ * Denormalization for Authorization:
+ * - Product documents do NOT contain explicit ownership fields. Admin role is verified via custom claims.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to products, but restricts write access to authorized users.
+     * @description Controls access to product documents. Public read, admin-only writes.
      * @path /products/{productId}
-     * @allow (get, list): Any user (or no user) can read product data.
-     * @allow (create): Only authenticated users can create products. The 'listing_status' must be set to 'draft'.
-     * @allow (update, delete): Only authenticated users can modify or delete products.
-     * @deny (create): Non-authenticated users cannot create products.
-     * @deny (update, delete): Non-authenticated users cannot modify or delete products.
-     * @principle Allows public read, restricts write access to authenticated users.
+     * @allow get, list: if true;
+     * @allow create: if isAdmin();
+     * @allow update: if isAdmin() && resource != null;
+     * @allow delete: if isAdmin() && resource != null;
+     * @principle Allows public read access for the store UI while restricting write access to admins.
      */
     match /products/{productId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Restricts access to user profiles to the owner of the profile.
+     * @description Controls access to user documents. Owner-only access.
      * @path /users/{userId}
-     * @allow (get): Only the user with the matching UID can read their profile.
-     * @allow (create): Only the user with the matching UID can create their profile.
-     * @allow (update, delete): Only the user with the matching UID can update or delete their profile.
-     * @deny (get, create, update, delete): Any other user cannot access another user's profile.
-     * @deny (list): Listing all users is not allowed.
-     * @principle Enforces document ownership for user profiles.
+     * @allow get: if isOwner(userId);
+     * @allow list: if false;
+     * @allow create: if isOwner(userId);
+     * @allow update: if isOwner(userId) && resource != null;
+     * @allow delete: if isOwner(userId) && resource != null;
+     * @principle Enforces strict user-ownership for user profiles.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Allows authenticated users to manage schedules.
+     * @description Controls access to schedule documents. Admin-only access.
      * @path /schedules/{scheduleId}
-     * @allow (get, list, create, update, delete): Only authenticated users can access schedules.
-     * @deny (get, list, create, update, delete): Non-authenticated users cannot access schedules.
-     * @principle Requires authentication for accessing schedules.
+     * @allow get: if isAdmin();
+     * @allow list: if isAdmin();
+     * @allow create: if isAdmin();
+     * @allow update: if isAdmin() && resource != null;
+     * @allow delete: if isAdmin() && resource != null;
+     * @principle Restricts management of scheduled tasks to admins.
      */
     match /schedules/{scheduleId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Restricts access to audit logs to authenticated users.
+     * @description Controls access to audit log documents. Append-only (create) access by trusted server environment.
      * @path /audit/{auditId}
-     * @allow (get, list, create, update, delete): Only authenticated users can access audit logs.
-     * @deny (get, list, create, update, delete): Non-authenticated users cannot access audit logs.
-     * @principle Requires authentication for accessing audit logs.
+     * @allow get, list, update, delete: if false;
+     * @allow create: if isTrustedServer();
+     * @principle Provides an immutable log of critical system actions, secured against modification.
      */
     match /audit/{auditId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list, update, delete: if false;
+      allow create: if isTrustedServer();
     }
 
+    // Helper functions
+
+    /**
+     * @description Checks if the current user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the current user is the owner of the resource.
+     * @param {string} userId The user ID to compare against.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
+
+    /**
+     * @description Checks if the current user has the 'admin' role.
+     * @return {boolean} True if the user is an admin, false otherwise.
+     */
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    /**
+     * @description Checks if the request is originating from a trusted server environment (e.g., Cloud Functions, Cloud Run).
+     * @return {boolean} True if the request is from a trusted server, false otherwise.
+     * @note This function should be replaced with a more robust mechanism (e.g., service account check, custom header validation).
+     */
+    function isTrustedServer() {
+      // TODO: Implement a robust mechanism to verify requests from trusted server environments.
+      return isAdmin(); // Placeholder: for prototyping, treat admins as trusted servers
+    }
+
   }
 }

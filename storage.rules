@@ -3,26 +3,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Helper function to check for admin custom claim
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
-    }
-
-    // Raw, scraped data is private and only accessible by service accounts (via Cloud Run/Functions) or admins.
+    // The RAW_BUCKET should be private. Only authenticated service accounts (Cloud Run) or admins can write.
     match /raw-archive/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Public product images can be read by anyone. Writes are restricted to admins.
-    // This allows the frontend to display images without authentication.
+    // The IMAGE_BUCKET is public for reads, but writes are restricted.
     match /product-images/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Allow users to upload their own profile pictures
-    match /user-profiles/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }

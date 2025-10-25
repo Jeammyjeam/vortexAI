@@ -2,6 +2,7 @@ import hashlib
 import re
 from io import BytesIO
 from urllib.parse import urlparse
+import requests
 
 from bs4 import BeautifulSoup
 from PIL import Image
