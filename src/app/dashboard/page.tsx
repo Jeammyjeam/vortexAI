@@ -8,39 +8,51 @@ import { useFirestore } from '@/firebase';
 import { ProductCard } from '@/components/product-card';
 import { Product } from '@/lib/types';
 import { CategoryNav } from '@/components/category-nav';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
 
+  // 1. Redirect unauthenticated users
   useEffect(() => {
+    // Wait until the initial user loading is complete
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
+  // 2. Memoize the Firestore query
   const productsQuery = useMemoFirebase(
     () =>
-      firestore && user
+      firestore && user // Only create query if firestore is initialized and user is logged in
         ? query(
             collection(firestore as Firestore, 'products'),
             orderBy('created_at', 'desc')
           )
-        : null,
+        : null, // Return null if not ready, the hook will wait
     [firestore, user]
   );
 
+  // 3. Subscribe to the real-time collection data
   const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
+  // 4. Show a loading state until authentication and initial data load are complete
+  // This prevents content flashes and ensures we have a user before rendering the main view
   if (isUserLoading || (user && areProductsLoading)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="text-foreground font-orbitron">Loading Command Console...</div>
+        <div className="flex flex-col items-center gap-4 text-foreground font-orbitron">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p>Loading Command Console...</p>
+        </div>
       </div>
     );
   }
 
+  // If loading is finished and there's still no user, don't render anything
+  // The useEffect above will handle the redirect.
   if (!user) {
     return null;
   }

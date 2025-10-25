@@ -4,7 +4,6 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { useFirestore } from '@/firebase';
 import { collection, query, orderBy, Firestore } from 'firebase/firestore';
 import { Button } from './ui/button';
-import { useRouter } from 'next/navigation';
 import { LayoutGrid, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,7 +15,6 @@ interface Category {
 
 export function CategoryNav() {
     const firestore = useFirestore();
-    const router = useRouter();
 
     const categoriesQuery = useMemoFirebase(
         () =>
@@ -33,7 +31,7 @@ export function CategoryNav() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground h-9">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Loading Categories...</span>
             </div>

@@ -43,7 +43,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * 
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
+ * use useMemoFirebase to memoize it per React guidence.  Also make sure that it's dependencies are stable
  * references
  *  
  * @template T Optional type for document data. Defaults to any.
@@ -58,34 +58,36 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery); // Start loading if a query is provided
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading by default
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // If the query is null or undefined, it means we are not ready to fetch yet.
+    // This happens when dependencies (like the user object) are still loading.
     if (!memoizedTargetRefOrQuery) {
+      setIsLoading(true); // Keep loading until a valid query is provided
       setData(null);
-      setIsLoading(false);
       setError(null);
       return;
     }
 
+    // A valid query is provided, start the real-time listener.
     setIsLoading(true);
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
-        }
+        const results: ResultItemType[] = snapshot.docs.map(doc => ({
+          ...(doc.data() as T),
+          id: doc.id
+        }));
         setData(results);
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
+      (err: FirestoreError) => {
+        // This logic extracts the path from either a ref or a query for better error messages
         const path =
           'path' in memoizedTargetRefOrQuery
             ? memoizedTargetRefOrQuery.path
@@ -96,20 +98,23 @@ export function useCollection<T = any>(
           path,
         });
 
+        console.error("useCollection Firestore Error:", contextualError.message);
         setError(contextualError);
         setData(null);
         setIsLoading(false);
 
-        // trigger global error propagation
+        // trigger global error propagation for Next.js error overlay
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
+    // Cleanup function to unsubscribe from the listener when the component unmounts
+    // or when the query changes.
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery]); // Re-run effect if the memoized query/reference changes.
 
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    console.warn('The query/reference passed to useCollection was not memoized with useMemoFirebase. This can lead to performance issues and infinite loops.', memoizedTargetRefOrQuery);
+  if(memoizedTargetRefOrQuery && !(memoizedTargetRefOrQuery as any).__memo) {
+    console.warn('The query/reference passed to useCollection was not created with useMemoFirebase. This can lead to performance issues and infinite loops.', memoizedTargetRefOrQuery);
   }
 
   return { data, isLoading, error };

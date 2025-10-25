@@ -4,7 +4,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -74,7 +74,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
+    setUserAuthState({ user: auth.currentUser, isUserLoading: true, userError: null }); // Reset on auth instance change, assume current user might exist
 
     const unsubscribe = onAuthStateChanged(
       auth,
@@ -156,21 +156,30 @@ export const useFirebaseApp = (): FirebaseApp => {
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+export function useMemoFirebase<T>(factory: () => T | null, deps: DependencyList): T | null {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(factory, deps);
   
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
+  if (typeof memoized !== 'object' || memoized === null) return memoized;
+
+  // Add a non-enumerable property to mark the object as memoized.
+  Object.defineProperty(memoized, '__memo', {
+    value: true,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
   
-  return memoized;
+  return memoized as MemoFirebase<T>;
 }
+
 
 /**
  * Hook specifically for accessing the authenticated user's state.
  * This provides the User object, loading status, and any auth errors.
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
-export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
+export const useUser = (): UserHookResult => { 
+  const { user, isUserLoading, userError } = useFirebase();
   return { user, isUserLoading, userError };
 };
