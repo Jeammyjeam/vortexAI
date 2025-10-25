@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ThumbsDown, ThumbsUp, Loader2 } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
 
 interface ProductStatusUpdaterProps {
   productId: string;
@@ -14,20 +15,31 @@ interface ProductStatusUpdaterProps {
 export function ProductStatusUpdater({ productId, currentStatus }: ProductStatusUpdaterProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useUser();
   const [isPending, startTransition] = useTransition();
   const [action, setAction] = useState<'approving' | 'rejecting' | null>(null);
 
   const handleUpdateStatus = async (newStatus: 'approved' | 'rejected') => {
-    if (isPending) return;
+    if (isPending || !user) {
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: 'You must be logged in to perform this action.',
+        });
+        return;
+    }
 
     setAction(newStatus === 'approved' ? 'approving' : 'rejecting');
 
     startTransition(async () => {
       try {
+        const idToken = await user.getIdToken();
+
         const response = await fetch(`/api/products/${productId}/status`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
           },
           body: JSON.stringify({ status: newStatus }),
         });
