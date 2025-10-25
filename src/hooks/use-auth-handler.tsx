@@ -105,7 +105,8 @@ export function useAuthActions() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push('/');
+      // Force a reload to clear all state and re-evaluate auth status
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Sign-out error', error);
       toast({

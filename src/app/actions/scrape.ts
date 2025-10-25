@@ -1,27 +1,27 @@
+'use server';
 
 import { auth } from '@/firebase/server';
-import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { GoogleAuth } from 'google-auth-library';
+import { headers } from 'next/headers';
 
-export async function POST(request: Request) {
+export async function startScraper(): Promise<{ success: boolean, message?: string, error?: string }> {
   try {
+    // 1. Verify the user is an authenticated admin on the server-side
     const headersList = headers();
     const authorization = headersList.get('authorization');
 
     if (!authorization) {
-        return NextResponse.json({ error: 'Authorization header missing' }, { status: 401 });
+        throw new Error('Authorization header missing. You must be logged in.');
     }
 
     const idToken = authorization.split('Bearer ')[1];
     if (!idToken) {
-        return NextResponse.json({ error: 'Bearer token missing' }, { status: 401 });
+        throw new Error('Bearer token missing.');
     }
 
-    // 1. Verify the user's ID token to ensure they are a legitimate user
     const decodedToken = await auth.verifyIdToken(idToken);
     if (decodedToken.admin !== true) {
-        return NextResponse.json({ error: 'User is not an admin' }, { status: 403 });
+        throw new Error('Insufficient permissions. User is not an admin.');
     }
 
     // 2. Get the URL of the deployed Cloud Run service
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const client = await googleAuth.getIdTokenClient(scraperServiceUrl);
 
     // 4. Make an authorized POST request to the scraper service
-    console.log(`Invoking scraper service at: ${scraperServiceUrl}`);
+    console.log(`Invoking scraper service at: ${scraperServiceUrl} for user ${decodedToken.uid}`);
     const response = await client.request({
         url: scraperServiceUrl,
         method: 'POST',
@@ -43,11 +43,15 @@ export async function POST(request: Request) {
     
     console.log("Scraper service responded with status:", response.status);
 
-    return NextResponse.json({ success: true, message: "Scraper job started successfully." }, { status: response.status });
+    if (response.status !== 202) {
+        throw new Error(`Scraper service returned an unexpected status: ${response.status}`);
+    }
+
+    return { success: true, message: "Scraper job started successfully." };
 
   } catch (error: any) {
-    console.error('Failed to invoke scraper service:', error);
+    console.error('[SERVER ACTION ERROR] Failed to invoke scraper service:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ error: 'Failed to start scraper job', details: errorMessage }, { status: 500 });
+    return { success: false, error: errorMessage };
   }
 }

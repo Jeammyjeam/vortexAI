@@ -4,11 +4,12 @@ import { useDoc, useUser, useMemoFirebase } from '@/firebase';
 import { doc, Firestore } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from './ui/button';
-import { PlayCircle, Loader2, ServerCrash } from 'lucide-react';
+import { PlayCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { SystemLog } from '@/lib/types';
 import { Badge } from './ui/badge';
+import { startScraper } from '@/app/actions/scrape';
 
 export function ScraperStatus() {
     const firestore = useFirestore();
@@ -31,15 +32,10 @@ export function ScraperStatus() {
 
         startTransition(async () => {
             try {
-                const idToken = await user.getIdToken(true);
-                const response = await fetch('/api/scrape', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${idToken}` },
-                });
+                const result = await startScraper();
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.details || 'Failed to start scraper job.');
+                if (result.error) {
+                    throw new Error(result.error);
                 }
                 
                 toast({ title: 'Discovery Initiated', description: 'The VORTEX engine is now scanning for products.' });
