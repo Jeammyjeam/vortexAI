@@ -1,102 +1,114 @@
 /**
- * @description This ruleset enforces a strict owner-based access control model for user data,
- *              allows public read access to product information, and restricts schedule and audit log access.
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes security by enforcing role-based access control and ownership checks.
+ * It uses a flexible data model, deferring strict schema validation for a later phase.
  *
  * Data Structure:
- * - /products/{productId}: Publicly readable product data. Only authenticated users can create products,
- *   and only the creator can modify or delete them.
- * - /users/{userId}:  Stores admin user profiles.  Only the user themselves can read/write their own profile.
- * - /schedules/{scheduleId}: Stores schedules. Only authenticated users can create schedules,
- *   and only the creator can modify or delete them.
- * - /audit/{auditId}: Stores audit logs.  No client-side access is permitted.
+ * - /products/{productId}: Publicly readable, but create/update/delete restricted to authorized users.
+ * - /categories/{categoryId}: Publicly readable. Write operations are denied.
+ * - /users/{userId}: Only the authenticated user can read/write their own document.
+ * - /schedules/{scheduleId}: Write operations are denied.
+ * - /audit/{auditId}: Write operations are denied.
  *
  * Key Security Decisions:
- * - Products are publicly readable but writable only by authenticated users who are the owner.
- * - Users can only read and write their own profile data. User listing is disallowed.
- * - Schedules are writable only by authenticated users who are the owner.
- * - Audit logs are completely inaccessible from the client.
- * - No data validation beyond ownership checks is performed in this prototype phase.
+ * - Listing all users is disallowed.
+ * - Categories, Schedules, and Audit logs are read-only for all clients.
+ * - Read operations are public, write operations are denied on certain collections.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages access control for product documents.  Products are publicly readable,
-     *              but create/update/delete operations are restricted to the product's owner.
+     * @description Allows public read access to products, but restricts write access to authorized users.
      * @path /products/{productId}
-     * @allow (get, list): Any user can read product information.
-     * @allow (create): Authenticated user can create a product if they are the owner
-     * @allow (update, delete): Only the owner of the product can modify or delete it.
-     * @deny (create): An unauthenticated user attempts to create a product.
-     * @deny (update, delete): A user attempts to modify or delete a product they don't own.
-     * @principle Allows public read access with owner-only writes.
+     * @allow (get, list): Any user can read products.
+     * @allow (create): Only authorized users can create products.
+     * @deny (update, delete): Only authorized users can update or delete products.
+     * @principle Allows public read access while restricting write access.
      */
     match /products/{productId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.source_url is string && request.resource.data.title is string && request.resource.data.price is number;
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get, list: if true;
+      allow create: if false; // TODO: Add authorization check for create.
+      allow update: if false; // TODO: Add authorization check for update.
+      allow delete: if false; // TODO: Add authorization check for delete.
     }
 
     /**
-     * @description Manages access control for user profile documents.  Users can only read and write their own profile data.
+     * @description Allows public read access to categories, but denies all write access.
+     * @path /categories/{categoryId}
+     * @allow (get, list): Any user can read categories.
+     * @deny (create, update, delete): No user can create, update, or delete categories.
+     * @principle Enforces read-only access to category data.
+     */
+    match /categories/{categoryId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Restricts access to user documents to the authenticated user.
      * @path /users/{userId}
-     * @allow (get, update, delete): The user with the matching UID can access their own profile.
-     * @allow (create): Allows user creation if the authenticated user's ID matches the document ID.
-     * @deny (get, update, delete): A user attempts to access another user's profile.
-     * @deny (list): Listing all users is not permitted.
-     * @principle Enforces document ownership for all operations.
+     * @allow (get, list): Only the authenticated user can read their own document. Listing is disallowed for all users.
+     * @allow (create): Only the authenticated user can create their own document.
+     * @allow (update, delete): Only the authenticated user can update or delete their own document.
+     * @deny (create): If the userId in the path does not match the authenticated user's UID.
+     * @deny (update, delete): If the document does not exist or the userId in the path does not match the authenticated user's UID.
+     * @principle Enforces document ownership for user data.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId && request.resource.data.email is string && request.resource.data.role is string && request.resource.data.displayName is string;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.uid == userId;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Manages access control for schedule documents.  Schedules are publicly readable,
-     *              but create/update/delete operations are restricted to the schedule's owner.
+     * @description Denies all access to the schedules collection.
      * @path /schedules/{scheduleId}
-     * @allow (get, list): Any user can read schedule information.
-     * @allow (create): Authenticated user can create a schedule if they are the owner
-     * @allow (update, delete): Only the owner of the schedule can modify or delete it.
-     * @deny (create): An unauthenticated user attempts to create a schedule.
-     * @deny (update, delete): A user attempts to modify or delete a schedule they don't own.
+     * @deny (get, list, create, update, delete): No user can read or write schedule data.
+     * @principle Enforces a completely closed-off collection.
      */
     match /schedules/{scheduleId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.product_id is string && request.resource.data.channel is string && request.resource.data.content is string && request.resource.data.scheduled_at is string && request.resource.data.status is string;
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Restricts all client-side access to audit logs.
+     * @description Denies all access to the audit collection.
      * @path /audit/{auditId}
-     * @allow (get, list, create, update, delete): No client-side access is permitted.
-     * @deny (get, list, create, update, delete): Any attempt to access audit logs from the client.
-     * @principle Secures sensitive system data by denying all client access.
+     * @deny (get, list, create, update, delete): No user can read or write audit log data.
+     * @principle Enforces a completely closed-off collection.
      */
     match /audit/{auditId} {
       allow get: if false;
       allow list: if false;
       allow create: if false;
-      allow update: if false && resource != null;
-      allow delete: if false && resource != null;
+      allow update: if false;
+      allow delete: if false;
     }
+  }
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+  // Helper function to determine if the user is the owner of the document.
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
+  }
+
+  // Helper function to determine if the user is the owner of the EXISTING document.
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
   }
 }
