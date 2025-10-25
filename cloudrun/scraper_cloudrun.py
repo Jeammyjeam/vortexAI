@@ -84,6 +84,23 @@ def process_product_page(page, url):
             if gcs_uri and img_hash:
                 image_gcs_uris.append(gcs_uri)
                 image_hashes.append(img_hash)
+        
+        # 3.5. If a category was found, ensure it exists in the 'categories' collection
+        if parsed_data.get('category_name') and parsed_data.get('category_slug'):
+            category_slug = parsed_data['category_slug']
+            category_doc_ref = db.collection('categories').document(category_slug)
+            category_doc = category_doc_ref.get()
+            if not category_doc.exists:
+                category_doc_ref.set({
+                    'name': parsed_data['category_name'],
+                    'slug': category_slug,
+                    'product_count': 1,
+                    'created_at': firestore.SERVER_TIMESTAMP,
+                })
+            else:
+                # Atomically increment the product count
+                category_doc_ref.update({'product_count': firestore.Increment(1)})
+
 
         # 4. Assemble Firestore document
         product_id = str(uuid.uuid4())
@@ -108,6 +125,8 @@ def process_product_page(page, url):
             "reviews_count": parsed_data.get('reviews_count'),
             "trust_score": trust_score,
             "trend_score": trend_score,
+            "category_name": parsed_data.get('category_name'),
+            "category_slug": parsed_data.get('category_slug'),
             "listing_status": "draft",
             "provenance_raw_key": provenance_key,
             "shopify_product_id": None,

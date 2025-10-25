@@ -68,7 +68,9 @@ def parse_generic(html, url):
         "currency": None,
         "images": [],
         "seller": {"name": None, "rating": None},
-        "reviews_count": None
+        "reviews_count": None,
+        "category_name": None,
+        "category_slug": None,
     }
 
     # --- Title Extraction ---
@@ -112,7 +114,6 @@ def parse_generic(html, url):
                 break
 
     # --- Image Extraction ---
-    # Prioritize high-quality image selectors
     img_selectors = ['#imgBlkFront', '#landingImage', 'img[class*="product-image"]', 'div[class*="gallery"] img']
     image_urls = set()
     for selector in img_selectors:
@@ -122,5 +123,20 @@ def parse_generic(html, url):
             if src and src.startswith('http'):
                 image_urls.add(src)
     data['images'] = list(image_urls)[:5] # Limit to 5 images
+    
+    # --- Category Extraction (from breadcrumbs) ---
+    breadcrumb_selectors = ['[class*="breadcrumb"] a', '.a-breadcrumb a']
+    for selector in breadcrumb_selectors:
+        elements = soup.select(selector)
+        if len(elements) > 1: # Usually the last link in a breadcrumb is the category
+            # Find the most likely category link (often the second to last)
+            category_element = elements[-1]
+            category_name = category_element.get_text(strip=True)
+            if category_name.lower() not in ['home', 'products']:
+                data['category_name'] = category_name
+                # Create a simple slug
+                slug = re.sub(r'[^a-z0-9]+', '-', category_name.lower()).strip('-')
+                data['category_slug'] = slug
+                break
 
     return data

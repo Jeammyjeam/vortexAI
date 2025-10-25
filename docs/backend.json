@@ -19,7 +19,9 @@
         "reviews_count": { "type": "number" },
         "trust_score": { "type": "number" },
         "trend_score": { "type": "number" },
-        "listing_status": { "type": "string", "enum": ["draft", "enriched", "approved", "published", "rejected", "removed"] },
+        "category_name": { "type": "string", "description": "The human-readable name of the category." },
+        "category_slug": { "type": "string", "description": "The URL-friendly slug for the category." },
+        "listing_status": { "type": "string", "enum": ["draft", "enriched", "approved", "published", "rejected", "removed", "failed_enrichment", "failed_publish"] },
         "provenance_raw_key": { "type": "string" },
         "shopify_product_id": { "type": "string" },
         "enriched_fields": {
@@ -50,6 +52,18 @@
           "last_login": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "Category": {
+        "title": "Category",
+        "type": "object",
+        "description": "Represents a product category.",
+        "properties": {
+            "name": { "type": "string" },
+            "slug": { "type": "string" },
+            "product_count": { "type": "number" },
+            "created_at": { "type": "string", "format": "date-time" }
+        },
+        "required": ["name", "slug"]
     },
     "Schedule": {
         "title": "Schedule",
@@ -89,6 +103,7 @@
   "firestore": {
       "structure": [
           { "path": "/products/{productId}", "definition": { "schema": { "$ref": "#/entities/Product" } } },
+          { "path": "/categories/{categoryId}", "definition": { "schema": { "$ref": "#/entities/Category" } } },
           { "path": "/users/{userId}", "definition": { "schema": { "$ref": "#/entities/AdminUser" } } },
           { "path": "/schedules/{scheduleId}", "definition": { "schema": { "$ref": "#/entities/Schedule" } } },
           { "path": "/audit/{auditId}", "definition": { "schema": { "$ref": "#/entities/AuditLog" } } }

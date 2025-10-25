@@ -7,35 +7,33 @@ import { collection, query, orderBy, Firestore } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { ProductCard } from '@/components/product-card';
 import { Product } from '@/lib/types';
+import { CategoryNav } from '@/components/category-nav';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
 
-  // 1. Redirect unauthenticated users immediately.
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
-  // 2. Only create the query if the user is authenticated.
   const productsQuery = useMemoFirebase(
     () =>
-      firestore && user // <-- Ensure user exists before creating the query
+      firestore && user
         ? query(
             collection(firestore as Firestore, 'products'),
             orderBy('created_at', 'desc')
           )
-        : null, // <-- Return null if not ready
-    [firestore, user] // <-- Add user as a dependency
+        : null,
+    [firestore, user]
   );
 
   const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
-  // 3. Handle all loading states cleanly.
-  if (isUserLoading || areProductsLoading) {
+  if (isUserLoading || (user && areProductsLoading)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-foreground font-orbitron">Loading Command Console...</div>
@@ -43,8 +41,6 @@ export default function DashboardPage() {
     );
   }
 
-  // If the effect above hasn't redirected yet, we might still not have a user.
-  // This prevents a flash of the "empty" state before redirection.
   if (!user) {
     return null;
   }
@@ -54,6 +50,10 @@ export default function DashboardPage() {
       <main className="container mx-auto py-12 px-4 md:px-6">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold font-orbitron">Command Console</h1>
+        </div>
+        
+        <div className="mb-8">
+            <CategoryNav />
         </div>
 
         {products && products.length > 0 ? (
