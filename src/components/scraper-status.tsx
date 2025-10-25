@@ -27,15 +27,15 @@ export function ScraperStatus() {
 
     const handleStartScraper = async () => {
         if (!user) {
-            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to perform this action.' });
             return;
         }
 
         startTransition(async () => {
             try {
-                // Get the user's ID token to pass to the server action for verification
-                const idToken = await user.getIdToken(true);
-                const result = await startScraper(idToken);
+                // The server action now handles authentication via its service account.
+                // We no longer need to pass the user's ID token.
+                const result = await startScraper();
 
                 if (result.error) {
                     throw new Error(result.error);
@@ -44,7 +44,7 @@ export function ScraperStatus() {
                 toast({ title: 'Discovery Initiated', description: 'The VORTEX engine is now scanning for products.' });
             } catch (error) {
                 console.error(error);
-                toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'Could not start scraper.' });
+                toast({ variant: 'destructive', title: 'Error Starting Discovery', description: error instanceof Error ? error.message : 'Could not start the scraper service.' });
             }
         });
     };
@@ -64,6 +64,11 @@ export function ScraperStatus() {
         }
         return <Badge variant="outline">Idle</Badge>;
     };
+
+    // Only render the button if the user is logged in.
+    if (!user) {
+        return null;
+    }
 
     return (
         <div className="flex items-center gap-4 p-3 rounded-lg bg-card border">

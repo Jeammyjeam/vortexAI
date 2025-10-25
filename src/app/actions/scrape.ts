@@ -1,33 +1,24 @@
 
 'use server';
 
-import { auth } from '@/firebase/server';
 import { GoogleAuth } from 'google-auth-library';
 
-export async function startScraper(idToken: string): Promise<{ success: boolean, message?: string, error?: string }> {
+export async function startScraper(): Promise<{ success: boolean, message?: string, error?: string }> {
   try {
-    // 1. Verify the user is an authenticated admin on the server-side
-    if (!idToken) {
-        throw new Error('Authentication token missing. You must be logged in.');
-    }
-
-    const decodedToken = await auth.verifyIdToken(idToken);
-    if (decodedToken.admin !== true) {
-        throw new Error('Insufficient permissions. User is not an admin.');
-    }
-
-    // 2. Get the URL of the deployed Cloud Run service
+    // 1. Get the URL of the deployed Cloud Run service from environment variables
     const scraperServiceUrl = process.env.SCRAPER_SERVICE_URL;
     if (!scraperServiceUrl) {
-        throw new Error("SCRAPER_SERVICE_URL environment variable is not set.");
+        throw new Error("Configuration error: SCRAPER_SERVICE_URL environment variable is not set.");
     }
     
-    // 3. Create an authorized client to invoke the Cloud Run service
+    // 2. Create an authorized client to invoke the Cloud Run service.
+    // This automatically uses the service account of the environment (the App Hosting backend)
+    // to authenticate to the scraper service. The service account MUST have the "Cloud Run Invoker" role.
     const googleAuth = new GoogleAuth();
     const client = await googleAuth.getIdTokenClient(scraperServiceUrl);
 
-    // 4. Make an authorized POST request to the scraper service
-    console.log(`Invoking scraper service at: ${scraperServiceUrl} for user ${decodedToken.uid}`);
+    // 3. Make the authorized POST request to trigger the scraper.
+    console.log(`Invoking scraper service at: ${scraperServiceUrl}`);
     const response = await client.request({
         url: scraperServiceUrl,
         method: 'POST',
@@ -35,6 +26,7 @@ export async function startScraper(idToken: string): Promise<{ success: boolean,
     
     console.log("Scraper service responded with status:", response.status);
 
+    // The scraper is designed to return a 202 "Accepted" status on success.
     if (response.status !== 202) {
         const responseData = response.data as any;
         const errorMessage = responseData?.message || `Scraper service returned an unexpected status: ${response.status}`;
@@ -46,6 +38,7 @@ export async function startScraper(idToken: string): Promise<{ success: boolean,
   } catch (error: any) {
     console.error('[SERVER ACTION ERROR] Failed to invoke scraper service:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return { success: false, error: errorMessage };
+    // Provide a more user-friendly error message
+    return { success: false, error: `Failed to start the discovery service. Please ensure it's deployed and permissions are correct. Details: ${errorMessage}` };
   }
 }
