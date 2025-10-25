@@ -1,88 +1,81 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a role-based access control model with public read access for product listings.
+ * @fileOverview Firestore Security Rules for the VORTEX AI GRID application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes authorization independence by avoiding hierarchical dependencies and enforcing access control based on resource-specific rules.
+ * Admin privileges are granted based on the existence of a document in the `roles_admin` collection.
  *
  * Data Structure:
- * - /productListings/{productListingId}: Publicly readable product listings. Only admins can create, update, or delete.
- * - /productListings/{productListingId}/socialPosts/{socialPostId}: Social posts associated with a product listing. Only admins can manage.
- * - /productListings/{productListingId}/analyticsData/{analyticsDataId}: Analytics data for a product listing. Only admins can manage.
- * - /roles_admin/{adminUserId}: Documents indicating admin users. Document existence grants admin privileges.
+ * - /productListings/{productListingId}: Stores publicly available product listings.
+ * - /productListings/{productListingId}/socialPosts/{socialPostId}: Stores social media posts related to a product listing.
+ * - /productListings/{productListingId}/analyticsData/{analyticsDataId}: Stores analytics data related to a product listing.
+ * - /roles_admin/{adminUserId}: Stores admin user IDs. Existence of a document grants admin privileges.
  *
  * Key Security Decisions:
- * - Product listings are publicly readable to allow open access for storefront UIs and SEO crawlers.
- * - Only authenticated admins can create, update, or delete product listings, social posts, and analytics data.
- * - The existence of a document in the `/roles_admin/{adminUserId}` collection grants admin privileges.
- * - Listing of documents in `/roles_admin` is denied to prevent unauthorized enumeration of admins.
+ * - Admin privileges are determined by the presence of a document in the `roles_admin` collection.
+ * - Product listings are considered publicly readable.
+ * - Listing operations are secured using path-based authorization, ensuring that only authorized data is exposed.
+ *
+ * Denormalization for Authorization:
+ *   - The `roles_admin` collection uses document existence as a proxy for admin privileges, avoiding the need to store complex role data within user documents.
+ * Structural Segregation:
+ *   - The separation of product listings and admin roles into distinct top-level collections ensures that access control rules are well-defined and prevent unintended data exposure.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to product listings, but restricts write access to authenticated admins only.
+     * @description Grants public read access to product listings and restricts write access to admins.
      * @path /productListings/{productListingId}
-     * @allow (get, list) - Any user can read product listings.
-     * @allow (create, update, delete) - An authenticated user with admin privileges can create, update, or delete product listings.
-     * @deny (create, update, delete) - Any non-admin user attempts to create, update, or delete product listings.
-     * @principle Public read, admin-only write access control.
+     * @allow get, list: Anyone can read product listings.
+     * @allow create, update, delete: Only admins can create, update, or delete product listings.
+     * @deny create, update, delete: Non-admins cannot create, update, or delete product listings.
+     * @principle Allows public read access while restricting write access to authorized users.
      */
     match /productListings/{productListingId} {
       allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Allows admin users to manage social posts associated with a specific product listing.
+     * @description Restricts access to social posts to admins only.
      * @path /productListings/{productListingId}/socialPosts/{socialPostId}
-     * @allow (create, update, delete) - An authenticated user with admin privileges can create, update, or delete social posts.
-     * @deny (create, update, delete) - Any non-admin user attempts to create, update, or delete social posts.
-     * @principle Admin-only write access control.
+     * @allow create, update, delete, get, list: Only admins can perform any operation on social posts.
+     * @deny create, update, delete, get, list: Non-admins cannot perform any operation on social posts.
+     * @principle Enforces admin-only access for managing social media posts.
      */
     match /productListings/{productListingId}/socialPosts/{socialPostId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow get, list, create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Allows admin users to manage analytics data associated with a specific product listing.
+     * @description Restricts access to analytics data to admins only.
      * @path /productListings/{productListingId}/analyticsData/{analyticsDataId}
-     * @allow (create, update, delete) - An authenticated user with admin privileges can create, update, or delete analytics data.
-     * @deny (create, update, or delete) - Any non-admin user attempts to create, update, or delete analytics data.
-     * @principle Admin-only write access control.
+     * @allow create, update, delete, get, list: Only admins can perform any operation on analytics data.
+     * @deny create, update, delete, get, list: Non-admins cannot perform any operation on analytics data.
+     * @principle Enforces admin-only access for managing analytics data.
      */
     match /productListings/{productListingId}/analyticsData/{analyticsDataId} {
-      allow get, list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow get, list, create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Allows only authenticated users to create admin roles by creating a document with their uid as the doc id
+     * @description Allows admins to manage the roles_admin collection.
      * @path /roles_admin/{adminUserId}
+     * @allow get, list, create, update, delete: Only admins can manage the roles_admin collection.
+     * @deny create, update, delete, get, list: Non-admins cannot manage the roles_admin collection.
+     * @principle  Admin role management through document existence in a dedicated collection.
      */
     match /roles_admin/{adminUserId} {
-        allow get: if isAdmin();
-        allow list: if false;
-        allow create: if isSignedIn() && request.auth.uid == adminUserId;
-        allow update: if false;
-        allow delete: if false;
+      allow get, list, create, update, delete: if isAdmin() && request.auth.uid == adminUserId;
     }
 
-    /**
-     * @description Checks if the user is signed in.
-     */
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the user has admin privileges by checking for the existence of a document with their UID in the /roles_admin collection.
-     */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
