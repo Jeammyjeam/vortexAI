@@ -1,3 +1,4 @@
+
 // Using a server component to fetch data initially for SEO and faster loads
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/server'; // We need a server-side admin instance

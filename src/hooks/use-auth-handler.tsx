@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,11 +8,12 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from './use-toast';
-import type { Firestore } from 'firebase/firestore';
+import type { Firestore, User } from 'firebase/firestore';
 
 export function useAuthActions() {
   const auth = useAuth();
@@ -24,6 +26,7 @@ export function useAuthActions() {
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  // Redirect user if already logged in
   useEffect(() => {
     if (!isUserLoading && user) {
       setIsSigningIn(false);
@@ -31,35 +34,63 @@ export function useAuthActions() {
     }
   }, [user, isUserLoading, router]);
 
-  const createUserDocument = async (user: import('firebase/auth').User) => {
-    const userRef = doc(firestore as Firestore, 'users', user.uid);
+  const createUserDocument = async (firebaseUser: import('firebase/auth').User) => {
+    if (!firestore) return;
+    const userRef = doc(firestore as Firestore, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userRef);
+
     if (!userDoc.exists()) {
       await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        role: 'viewer', // Default role for new users
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        role: 'viewer', // Default role for all new users
         last_login: serverTimestamp(),
         created_at: serverTimestamp(),
       });
     } else {
-        await setDoc(userRef, { last_login: serverTimestamp() }, { merge: true });
+      await setDoc(userRef, { last_login: serverTimestamp() }, { merge: true });
     }
   };
+  
+  const handleSignInError = (error: any) => {
+      console.error('Sign-in error', error);
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: error.message || "An unknown error occurred during sign-in.",
+      });
+      setIsSigningIn(false);
+  }
 
-  const handleEmailSignIn = () => {
+  const handleEmailSignIn = async () => {
     if (!email || !password) {
-        toast({
-            variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: "Email and password cannot be empty.",
-        });
-        return;
+      toast({ variant: "destructive", title: "Missing Credentials", description: "Please enter both email and password." });
+      return;
     }
     setIsSigningIn(true);
-    initiateEmailSignIn(auth, email, password);
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await createUserDocument(userCredential.user);
+    } catch(error) {
+        handleSignInError(error);
+    }
   };
+  
+  const handleEmailSignUp = async () => {
+     if (!email || !password) {
+      toast({ variant: "destructive", title: "Missing Credentials", description: "Please enter both email and password." });
+      return;
+    }
+    setIsSigningIn(true);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserDocument(userCredential.user);
+    } catch(error) {
+        handleSignInError(error);
+    }
+  }
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
@@ -67,15 +98,8 @@ export function useAuthActions() {
     try {
       const result = await signInWithPopup(auth, provider);
       await createUserDocument(result.user);
-      // The useEffect will handle the redirect
-    } catch (error: any) {
-      console.error('Google sign-in error', error);
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: error.message || "An error occurred during Google sign-in.",
-      });
-      setIsSigningIn(false);
+    } catch (error) {
+      handleSignInError(error);
     }
   };
 
@@ -87,7 +111,7 @@ export function useAuthActions() {
       console.error('Sign-out error', error);
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Sign-out Failed",
         description: error.message || "An error occurred during sign-out.",
       });
     }
@@ -100,6 +124,7 @@ export function useAuthActions() {
     setPassword,
     isSigningIn,
     handleEmailSignIn,
+    handleEmailSignUp,
     handleGoogleSignIn,
     handleSignOut,
   };

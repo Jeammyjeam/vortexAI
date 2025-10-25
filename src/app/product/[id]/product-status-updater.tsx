@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ export function ProductStatusUpdater({ productId, currentStatus }: ProductStatus
 
     startTransition(async () => {
       try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true); // Force refresh the token
 
         const response = await fetch(`/api/products/${productId}/status`, {
           method: 'POST',
@@ -70,14 +71,14 @@ export function ProductStatusUpdater({ productId, currentStatus }: ProductStatus
     });
   };
   
-  const isProcessing = isPending || currentStatus === 'approved' || currentStatus === 'published' || currentStatus === 'rejected';
+  const isActionable = currentStatus === 'draft' || currentStatus === 'enriched' || currentStatus === 'failed_enrichment' || currentStatus === 'failed_publish';
 
   return (
     <div className="flex gap-4">
       <Button
         size="lg"
         onClick={() => handleUpdateStatus('approved')}
-        disabled={isProcessing || action === 'rejecting'}
+        disabled={!isActionable || isPending || action === 'rejecting'}
         className="bg-green-600 hover:bg-green-700 text-white"
       >
         {action === 'approving' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
@@ -87,7 +88,7 @@ export function ProductStatusUpdater({ productId, currentStatus }: ProductStatus
         size="lg"
         variant="destructive"
         onClick={() => handleUpdateStatus('rejected')}
-        disabled={isProcessing || action === 'approving'}
+        disabled={!isActionable || isPending || action === 'approving'}
       >
         {action === 'rejecting' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsDown className="mr-2 h-4 w-4" />}
         Reject
