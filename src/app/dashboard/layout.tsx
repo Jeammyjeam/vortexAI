@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/auth/use-user';
 import { useRouter } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import DashboardSidebar from '@/components/dashboard-sidebar';

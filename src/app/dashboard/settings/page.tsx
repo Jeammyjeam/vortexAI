@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { useFirestore, useDoc, useCollection } from '@/firebase';
+import { useFirestore, useDoc, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import { mockProducts } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,6 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { AppConfig } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const defaultConfig: AppConfig = {
   id: 'default',
@@ -59,7 +58,7 @@ export default function SettingsPage() {
 
       toast({
         title: 'Database Seeding Started',
-        description: `${mockProducts.length} products are being added to Firestore.`,
+        description: `${mockProducts.length} products are being added to the database.`,
       });
     } catch (error) {
       console.error('Error seeding database:', error);

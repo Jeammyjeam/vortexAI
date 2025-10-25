@@ -25,11 +25,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore, useDoc } from '@/firebase';
+import { useCollection, useFirestore, useDoc, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { AutoScheduleDialog } from '@/components/auto-schedule-dialog';
 import { autoSchedulePosts } from '@/ai/flows/auto-schedule-posts';
 import { enrichProduct } from '@/lib/product-actions';
-import { updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface ProductCardProps {
   product: Product;
