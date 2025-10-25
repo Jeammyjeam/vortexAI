@@ -1,7 +1,8 @@
+
 import os
 import time
 import random
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import uuid
 
 from playwright.sync_api import sync_playwright
@@ -21,13 +22,31 @@ IMAGE_BUCKET_NAME = os.getenv("IMAGE_BUCKET")
 
 # Scraper Configuration
 SCRAPER_USER_AGENT = os.getenv("SCRAPER_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36")
-SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", 30)) * 1000  # in milliseconds
+SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", 60)) * 1000  # in milliseconds
 
-# Seed URLs for product discovery
+# --- Seed URLs for product discovery ---
+# This is now a structured list to handle different discovery strategies.
 SEED_SOURCES = [
-    "https://www.aliexpress.com/category/100003109/computer-office.html",
-    # In a real scenario, this would be a dynamic list from a database or config file
+    {
+        "name": "AliExpress - Computer & Office",
+        "url": "https://www.aliexpress.com/category/100003109/computer-office.html",
+        "type": "ecommerce_category",
+        "link_selector": 'a[href*="/item/"]',
+    },
+    {
+        "name": "Amazon - Bestsellers in Kitchen",
+        "url": "https://www.amazon.com/bestsellers/kitchen/ref=pd_zg_ts_kitchen",
+        "type": "ecommerce_category",
+        "link_selector": 'a[href*="/dp/"]',
+    },
+    {
+        "name": "Reddit - r/shutupandtakemymoney",
+        "url": "https://www.reddit.com/r/shutupandtakemymoney/top/?t=week",
+        "type": "reddit_subreddit",
+        "link_selector": 'a[data-testid="outbound-link"]',
+    },
 ]
+
 
 # --- Initialize Google Cloud Clients ---
 try:
@@ -35,8 +54,6 @@ try:
     storage_client = storage.Client(project=FIREBASE_PROJECT_ID)
 except Exception as e:
     print(f"FATAL: Could not initialize Google Cloud clients: {e}")
-    # In a real Cloud Run environment, this might cause the container to exit
-    # and be restarted, which is often the desired behavior for fatal config errors.
     exit(1)
 
 
@@ -47,7 +64,6 @@ def save_raw_html_to_gcs(html_content, url):
         return None
     try:
         bucket = storage_client.bucket(RAW_BUCKET_NAME)
-        # Create a unique filename based on the URL and current timestamp
         filename = f"{time.strftime('%Y%m%d-%H%M%S')}_{parse_utils.generate_safe_filename(url)}.html"
         blob = bucket.blob(filename)
         blob.upload_from_string(html_content, content_type='text/html')
@@ -98,7 +114,6 @@ def process_product_page(page, url):
                     'created_at': firestore.SERVER_TIMESTAMP,
                 })
             else:
-                # Atomically increment the product count
                 category_doc_ref.update({'product_count': firestore.Increment(1)})
 
 
@@ -106,14 +121,13 @@ def process_product_page(page, url):
         product_id = str(uuid.uuid4())
         source_domain = urlparse(url).netloc
         
-        # Heuristics for trust and trend scores (simple example)
         trust_score = random.uniform(0.6, 0.95) # Placeholder
         trend_score = random.uniform(0.5, 0.98) # Placeholder
 
         product_doc = {
             "source_domain": source_domain,
             "source_url": url,
-            "source_product_id": parse_utils.generate_safe_filename(url), # Example ID
+            "source_product_id": parse_utils.generate_safe_filename(url),
             "title": parsed_data['title'],
             "normalized_title": parsed_data['title'].lower(),
             "description": parsed_data['description'],
@@ -141,30 +155,40 @@ def process_product_page(page, url):
     except Exception as e:
         print(f"An error occurred while processing {url}: {e}")
 
-def discover_product_links(page, seed_url):
-    """Navigates to a seed URL and discovers product links."""
-    print(f"Discovering links from seed: {seed_url}")
+def discover_product_links(page, source_config):
+    """Navigates to a seed URL and discovers product links based on the source config."""
+    seed_url = source_config["url"]
+    link_selector = source_config["link_selector"]
+    print(f"Discovering links from seed: {source_config['name']} ({seed_url})")
+    
     try:
         page.goto(seed_url, wait_until='load', timeout=SCRAPER_TIMEOUT)
-        # A simple, non-robust selector for product links. This would need
-        # to be much more sophisticated for a real-world application.
-        links = page.locator('a[href*="/item/"]').all()
+        
+        # This handles cookie consent banners on some sites like Amazon
+        if page.locator('input[name="accept"]').is_visible():
+            page.locator('input[name="accept"]').click()
+            time.sleep(2)
+
+        links = page.locator(link_selector).all()
         
         product_urls = set()
-        for link in links[:10]: # Limit to 10 links per seed page for this example
+        for link in links[:15]: # Limit to 15 links per seed page
             href = link.get_attribute('href')
             if href:
-                # Ensure the URL is absolute
+                # Construct absolute URL
                 if href.startswith('//'):
                     href = 'https:' + href
                 elif href.startswith('/'):
                     parsed_seed = urlparse(seed_url)
                     href = f"{parsed_seed.scheme}://{parsed_seed.netloc}{href}"
-                
-                if "/item/" in href: # Basic validation
+                elif not href.startswith('http'):
+                     href = urljoin(seed_url, href)
+
+                # Basic validation to avoid mailto, javascript etc.
+                if href.startswith('http'):
                     product_urls.add(href)
         
-        print(f"Discovered {len(product_urls)} unique product links.")
+        print(f"Discovered {len(product_urls)} unique product links from {source_config['name']}.")
         return list(product_urls)
     except Exception as e:
         print(f"Failed to discover links from {seed_url}: {e}")
@@ -182,7 +206,6 @@ def main(test_url=None, dry_run=False):
             print(f"--- Running in test mode for URL: {test_url} ---")
             if dry_run:
                 print("--- DRY RUN: No data will be written. ---")
-                # Simulate the process without writing
                 page.goto(test_url, wait_until='networkidle', timeout=SCRAPER_TIMEOUT)
                 html = page.content()
                 data = parse_utils.parse_generic(html, test_url)
@@ -190,14 +213,14 @@ def main(test_url=None, dry_run=False):
             else:
                 process_product_page(page, test_url)
         else:
-            print("--- Running in discovery mode ---")
-            for seed in SEED_SOURCES:
-                product_urls = discover_product_links(page, seed)
+            print("--- Running in discovery mode across all seed sources ---")
+            for source_config in SEED_SOURCES:
+                product_urls = discover_product_links(page, source_config)
                 for url in product_urls:
-                    # Polite delay with jitter
-                    time.sleep(random.uniform(5, 15))
+                    time.sleep(random.uniform(5, 15)) # Polite delay with jitter
                     process_product_page(page, url)
-                print(f"Finished processing links from seed {seed}")
+                print(f"Finished processing links from seed {source_config['name']}")
+                time.sleep(random.uniform(10, 20)) # Longer delay between sources
 
         browser.close()
     print("--- Scraper run finished ---")
@@ -211,3 +234,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(test_url=args.test_url, dry_run=args.dry_run)
+
+    
