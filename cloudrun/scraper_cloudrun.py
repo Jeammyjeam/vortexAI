@@ -205,28 +205,31 @@ def run_scraper_logic(test_url=None, dry_run=False):
 class ScraperRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         print("Received POST request, starting scraper...")
+        # Run the scraper logic in a separate thread to avoid blocking the response
         scraper_thread = threading.Thread(target=run_scraper_logic)
         scraper_thread.start()
         
-        self.send_response(202)
+        self.send_response(202) # Accepted
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(b'{"status": "Scraper job started"}')
+        self.wfile.write(b'{"status": "Scraper job accepted and started in background"}')
 
 def run_server(port=8080):
     server_address = ('', port)
     httpd = HTTPServer(server_address, ScraperRequestHandler)
-    print(f"Starting httpd server on port {port}")
+    print(f"Starting httpd server on port {port}...")
     httpd.serve_forever()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Vortex AI Grid Scraper")
-    parser.add_argument("--test-url", help="Scrape a single product URL for testing.")
-    parser.add_argument("--dry-run", action="store_true", help="Parse and print data without writing to cloud.")
+    parser = argparse.ArgumentParser(description="Vortex AI Grid Scraper. Can be run locally with --test-url or deployed to Cloud Run to be triggered via HTTP POST.")
+    parser.add_argument("--test-url", help="Scrape a single product URL for local testing.")
+    parser.add_argument("--dry-run", action="store_true", help="Parse and print data without writing to cloud services.")
     args = parser.parse_args()
 
-    if args.test_url or args.dry_run:
+    # If --test-url is provided, run the scraper logic directly for local testing.
+    if args.test_url:
         run_scraper_logic(test_url=args.test_url, dry_run=args.dry_run)
+    # Otherwise, start the HTTP server to listen for POST requests, which is the expected mode for Cloud Run.
     else:
         port = int(os.environ.get("PORT", 8080))
         run_server(port)

@@ -17,8 +17,6 @@ MVP.md — this file. It contains the full MVP list, exact files required, envir
 
 2 — MVP Components (files & folders — only these)
 
-Create exactly the following structure (minimal):
-
 /cloudrun/
   scraper_cloudrun.py
   parse_utils.py
@@ -226,7 +224,8 @@ gcloud run deploy vortex-scraper \
   --platform managed \
   --region us-central1 \
   --service-account SCRAPER_SA@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com \
-  --set-env-vars RAW_BUCKET=raw-archive,IMAGE_BUCKET=product-images,FIREBASE_PROJECT=$GOOGLE_CLOUD_PROJECT
+  --set-env-vars RAW_BUCKET=raw-archive,IMAGE_BUCKET=product-images,FIREBASE_PROJECT=$GOOGLE_CLOUD_PROJECT \
+  --allow-unauthenticated
 
 
 ---
