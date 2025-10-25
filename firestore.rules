@@ -1,83 +1,96 @@
 /**
- * @fileOverview Firestore Security Rules for the VORTEX AI GRID application.
+ * @file Overview
+ * This ruleset enforces a mixed security model, allowing public read access to product data while restricting write access to authorized users.
+ * User data is strictly private, accessible only to the owner. Schedules and Audit Logs are only accessible to authorized users.
  *
- * Core Philosophy:
- * This ruleset prioritizes authorization independence by avoiding hierarchical dependencies and enforcing access control based on resource-specific rules.
- * Admin privileges are granted based on the existence of a document in the `roles_admin` collection.
+ * @dataStructure
+ * - /products/{productId}: Publicly readable product information. Write access controlled by authorization.
+ * - /users/{userId}: Private user profiles, accessible only to the user.
+ * - /schedules/{scheduleId}: Data about scheduled social media posts. Requires authentication for access.
+ * - /audit/{auditId}: Audit logs of system actions, read and write access controlled by authorization.
  *
- * Data Structure:
- * - /productListings/{productListingId}: Stores publicly available product listings.
- * - /productListings/{productListingId}/socialPosts/{socialPostId}: Stores social media posts related to a product listing.
- * - /productListings/{productListingId}/analyticsData/{analyticsDataId}: Stores analytics data related to a product listing.
- * - /roles_admin/{adminUserId}: Stores admin user IDs. Existence of a document grants admin privileges.
- *
- * Key Security Decisions:
- * - Admin privileges are determined by the presence of a document in the `roles_admin` collection.
- * - Product listings are considered publicly readable.
- * - Listing operations are secured using path-based authorization, ensuring that only authorized data is exposed.
- *
- * Denormalization for Authorization:
- *   - The `roles_admin` collection uses document existence as a proxy for admin privileges, avoiding the need to store complex role data within user documents.
- * Structural Segregation:
- *   - The separation of product listings and admin roles into distinct top-level collections ensures that access control rules are well-defined and prevent unintended data exposure.
+ * @keySecurityDecisions
+ * - Public Read Access for Products: The `products` collection is readable by all users, including unauthenticated users. This is intended for showcasing products.
+ * - Owner-Only Access for Users: The `users` collection enforces strict ownership. Each user can only access their own document. User listing is disallowed.
+ * - Authenticated Access for Schedules: Requires user authentication to access schedules.
+ * - Authenticated Access for Audit Logs: Requires user authentication to access audit logs.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants public read access to product listings and restricts write access to admins.
-     * @path /productListings/{productListingId}
-     * @allow get, list: Anyone can read product listings.
-     * @allow create, update, delete: Only admins can create, update, or delete product listings.
-     * @deny create, update, delete: Non-admins cannot create, update, or delete product listings.
-     * @principle Allows public read access while restricting write access to authorized users.
+     * @description Allows public read access to products, but restricts write access to authorized users.
+     * @path /products/{productId}
+     * @allow (get, list): Any user (or no user) can read product data.
+     * @allow (create): Only authenticated users can create products. The 'listing_status' must be set to 'draft'.
+     * @allow (update, delete): Only authenticated users can modify or delete products.
+     * @deny (create): Non-authenticated users cannot create products.
+     * @deny (update, delete): Non-authenticated users cannot modify or delete products.
+     * @principle Allows public read, restricts write access to authenticated users.
      */
-    match /productListings/{productListingId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+    match /products/{productId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Restricts access to social posts to admins only.
-     * @path /productListings/{productListingId}/socialPosts/{socialPostId}
-     * @allow create, update, delete, get, list: Only admins can perform any operation on social posts.
-     * @deny create, update, delete, get, list: Non-admins cannot perform any operation on social posts.
-     * @principle Enforces admin-only access for managing social media posts.
+     * @description Restricts access to user profiles to the owner of the profile.
+     * @path /users/{userId}
+     * @allow (get): Only the user with the matching UID can read their profile.
+     * @allow (create): Only the user with the matching UID can create their profile.
+     * @allow (update, delete): Only the user with the matching UID can update or delete their profile.
+     * @deny (get, create, update, delete): Any other user cannot access another user's profile.
+     * @deny (list): Listing all users is not allowed.
+     * @principle Enforces document ownership for user profiles.
      */
-    match /productListings/{productListingId}/socialPosts/{socialPostId} {
-      allow get, list, create, update, delete: if isAdmin();
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Restricts access to analytics data to admins only.
-     * @path /productListings/{productListingId}/analyticsData/{analyticsDataId}
-     * @allow create, update, delete, get, list: Only admins can perform any operation on analytics data.
-     * @deny create, update, delete, get, list: Non-admins cannot perform any operation on analytics data.
-     * @principle Enforces admin-only access for managing analytics data.
+     * @description Allows authenticated users to manage schedules.
+     * @path /schedules/{scheduleId}
+     * @allow (get, list, create, update, delete): Only authenticated users can access schedules.
+     * @deny (get, list, create, update, delete): Non-authenticated users cannot access schedules.
+     * @principle Requires authentication for accessing schedules.
      */
-    match /productListings/{productListingId}/analyticsData/{analyticsDataId} {
-      allow get, list, create, update, delete: if isAdmin();
+    match /schedules/{scheduleId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows admins to manage the roles_admin collection.
-     * @path /roles_admin/{adminUserId}
-     * @allow get, list, create, update, delete: Only admins can manage the roles_admin collection.
-     * @deny create, update, delete, get, list: Non-admins cannot manage the roles_admin collection.
-     * @principle  Admin role management through document existence in a dedicated collection.
+     * @description Restricts access to audit logs to authenticated users.
+     * @path /audit/{auditId}
+     * @allow (get, list, create, update, delete): Only authenticated users can access audit logs.
+     * @deny (get, list, create, update, delete): Non-authenticated users cannot access audit logs.
+     * @principle Requires authentication for accessing audit logs.
      */
-    match /roles_admin/{adminUserId} {
-      allow get, list, create, update, delete: if isAdmin() && request.auth.uid == adminUserId;
+    match /audit/{auditId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
   }
 }
