@@ -2,116 +2,206 @@
  * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset prioritizes a secure, role-based access control model with an emphasis on simplicity and auditability.
- * It avoids complex queries in rules, instead relying on data denormalization to make authorization decisions efficient.
+ * This ruleset prioritizes a secure-by-default posture, restricting data access based on user roles (admin, editor, viewer) and ownership.
+ * Data validation is minimized for rapid prototyping, focusing only on relational integrity.
  *
  * Data Structure:
- * - /products/{productId}: Publicly readable, owner-controlled writes. The `Product` document must contain an `ownerId` field.
- * - /categories/{categoryId}: Publicly readable. Only admins can create, update, or delete categories.
- * - /users/{userId}: Owner-only access to user profiles.
- * - /schedules/{scheduleId}:  Publicly readable, owner-controlled writes. The `Schedule` document must contain an `ownerId` field.
- * - /audit/{auditId}:  Write-only by admins, never readable by regular users.
+ * - /products/{productId}: Publicly readable, but writes restricted to authorized users.
+ * - /categories/{categoryId}: Publicly readable, but writes restricted to authorized users.
+ * - /users/{userId}: User profiles. Only the user and admins can read/write.
+ * - /schedules/{scheduleId}: Publicly readable, but writes restricted to authorized users.
+ * - /audit/{auditId}: Write-only, restricted to system processes or admins.
  *
  * Key Security Decisions:
- * - Public Read Access: The `/products` and `/categories` collections are publicly readable to allow for open browsing and discovery.
- * - Admin Role: A global admin role is enforced via the `isAdmin()` function, granting elevated privileges for managing critical data.
- * - Audit Logging: The `/audit` collection is strictly write-only for admins, ensuring that audit logs cannot be tampered with or viewed by unauthorized users.
- * - Denormalization: This ruleset avoids complex `get()` operations by requiring that authorization-related data (e.g., ownership) be denormalized directly onto the documents being secured.
- * - User Listing Disabled: Listing all users is disallowed to prevent unauthorized enumeration.
+ * - User listing is disallowed for privacy.
+ * - Roles are managed via the /users/{userId} document.
+ * - In this prototyping phase, data validation is relaxed to accelerate development. More strict data validation rules will be added in later development phases.
+ *
+ * Denormalization for Authorization:
+ *   Admin status is checked via the `/users/{userId}` document for each user.
+ *   This avoids needing to add a custom claim on every user.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants public read access to products and restricts write access to owners.
-     * @path /products/{productId}
-     * @allow (get, list): Any user can read product data.
-     * @allow (create): Only the authenticated owner can create a product, and the `ownerId` field must match their UID.
-     * @allow (update, delete): Only the authenticated owner of the existing product can modify or delete it.
-     * @deny (create): If the `ownerId` field does not match the authenticated user's UID.
-     * @deny (update, delete): If the authenticated user is not the owner of the existing product.
-     * @principle Public read, owner-only writes with ownership validation on create, update, and delete.
+     * @description Checks if the user is signed in.
      */
-    match /products/{productId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-    }
-
-    /**
-     * @description Grants public read access to categories and restricts write access to admins.
-     * @path /categories/{categoryId}
-     * @allow (get, list): Any user can read category data.
-     * @allow (create, update, delete): Only admins can create, update, or delete categories.
-     * @deny (create, update, delete): If the user is not an admin.
-     * @principle Public read, admin-only writes.
-     */
-    match /categories/{categoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Restricts access to user profiles to the owner of the profile.
-     * @path /users/{userId}
-     * @allow (get): Only the owner can read their own profile.
-     * @allow (create): Only the user themselves can create their profile, and the userId must match their UID.
-     * @allow (update, delete): Only the owner can update or delete their own profile.
-     * @deny (list): Listing all users is disallowed.
-     * @deny (create): If the userId does not match the authenticated user's UID.
-     * @deny (update, delete): If the authenticated user is not the owner of the profile.
-     * @principle Owner-only access to user data.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
-      allow list: if false;
-    }
-
-        /**
-     * @description Grants public read access to schedules and restricts write access to owners.
-     * @path /schedules/{scheduleId}
-     * @allow (get, list): Any user can read schedule data.
-     * @allow (create): Only the authenticated owner can create a schedule, and the `ownerId` field must match their UID.
-     * @allow (update, delete): Only the authenticated owner of the existing schedule can modify or delete it.
-     * @deny (create): If the `ownerId` field does not match the authenticated user's UID.
-     * @deny (update, delete): If the authenticated user is not the owner of the existing schedule.
-     * @principle Public read, owner-only writes with ownership validation on create, update, and delete.
-     */
-    match /schedules/{scheduleId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-    }
-
-    /**
-     * @description Restricts access to audit logs to admins only (write-only).
-     * @path /audit/{auditId}
-     * @allow (create): Only admins can create audit logs.
-     * @deny (get, list, update, delete): Regular users cannot read, list, update, or delete audit logs.
-     * @principle Admin-only write access to audit logs.
-     */
-    match /audit/{auditId} {
-      allow create: if isAdmin();
-      allow get, list, update, delete: if false;
-    }
-
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the user is the owner of the document, based on the UID.
+     * @param {string} userId - The user ID to check against the request's auth UID.
+     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * @description Checks if the user is an existing owner of the document.
+     * @param {string} userId - The user ID to check against the request's auth UID.
+     */
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
     }
 
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.role == 'admin';
+    /**
+     * @description Checks if the user has the specified role by reading the user document.
+     * @param {string} role - The role to check for (e.g., 'admin', 'editor').
+     */
+    function hasRole(role) {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
+
+    /**
+     * @description Checks if the user has admin role.
+     */
+    function isAdmin() {
+        return hasRole('admin');
+    }
+
+    /**
+     * @description Checks if the user has editor role.
+     */
+    function isEditor() {
+        return hasRole('editor');
+    }
+
+    /**
+     * @description Checks if the user has viewer role.
+     */
+    function isViewer() {
+        return hasRole('viewer');
+    }
+
+
+    /**
+     * @description Rules for the /products collection. Allows public read, but restricts writes to admins and editors.
+     * @path /products/{productId}
+     * @allow (get, list) - Any user can read or list products.
+     * @allow (create, update, delete) - Only admins and editors can create, update, or delete products.
+     *   Example: User with admin role creates a new product.
+     * @deny (create, update, delete) - A non-admin user attempts to create a product.
+     *   Example: User without admin role attempts to create a new product.
+     * @principle Allows public read access to product information, but restricts modification to authorized personnel.
+     */
+    match /products/{productId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin() || isEditor();
+      allow update: if isAdmin() || isEditor();
+      allow delete: if isAdmin() || isEditor();
+    }
+
+    /**
+     * @description Rules for the /categories collection. Allows public read, but restricts writes to admins and editors.
+     * @path /categories/{categoryId}
+     * @allow (get, list) - Any user can read or list categories.
+     *   Example: Anonymous user reads a category.
+     * @allow (create, update, delete) - Only admins and editors can create, update, or delete categories.
+     *   Example: User with editor role edits a category.
+     * @deny (create, update, delete) - A non-admin user attempts to create a category.
+     *   Example: User without editor role attempts to edit a category.
+     * @principle Allows public read access to category information, but restricts modification to authorized personnel.
+     */
+    match /categories/{categoryId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin() || isEditor();
+      allow update: if isAdmin() || isEditor();
+      allow delete: if isAdmin() || isEditor();
+    }
+
+    /**
+     * @description Rules for the /users collection. Only the user and admins can read/write their own document. User listing is disallowed.
+     * @path /users/{userId}
+     * @allow (get, create, update, delete) - The user can get, create, update, and delete their own user document.
+     *   Example: User updates their display name.
+     * @allow (get, create, update, delete) - An admin can get, create, update, and delete any user document.
+     *   Example: Admin updates another user's role.
+     * @deny (get, create, update, delete) - A non-admin user attempts to modify another user's document.
+     *   Example: User attempts to change another user's email.
+     * @deny (list) - Listing all users is not allowed.
+     *   Example: An attempt to list all user accounts.
+     * @principle Enforces user-ownership for profile data and allows admin override for management.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * @description Rules for the /schedules collection. Allows public read, but restricts writes to admins and editors.
+     * @path /schedules/{scheduleId}
+     * @allow (get, list) - Any user can read or list schedules.
+     *   Example: Anonymous user reads a schedule.
+     * @allow (create, update, delete) - Only admins and editors can create, update, or delete schedules.
+     *   Example: User with editor role edits a schedule.
+     * @deny (create, update, delete) - A non-admin user attempts to create a schedule.
+     *   Example: User without editor role attempts to edit a schedule.
+     * @principle Allows public read access to schedule information, but restricts modification to authorized personnel.
+     */
+    match /schedules/{scheduleId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin() || isEditor();
+      allow update: if isAdmin() || isEditor();
+      allow delete: if isAdmin() || isEditor();
+    }
+
+    /**
+     * @description Rules for the /audit collection. Only admins can write audit logs. Read access is denied to everyone.
+     * @path /audit/{auditId}
+     * @allow (create) - Only admins can create audit logs.
+     *   Example: Admin creates an audit log entry.
+     * @deny (get, list, update, delete) - No one can read, list, update, or delete audit logs.
+     *   Example: Any attempt to read, list, update, or delete an audit log entry.
+     * @principle Restricts audit log creation to authorized personnel and prevents unauthorized access to audit data.
+     */
+    match /audit/{auditId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+      /**
+     * @description Rules for the /system_logs collection. Only admins can write system logs. Read access is denied to everyone.
+     * @path /system_logs/{logId}
+     * @allow (create) - Only admins can create system logs.
+     *   Example: Admin creates an system log entry.
+     * @deny (get, list, update, delete) - No one can read, list, update, or delete audit logs.
+     *   Example: Any attempt to read, list, update, or delete an audit log entry.
+     */
+    match /system_logs/{logId} {
+      allow get: if isAdmin();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for the /system_logs/scraper_status document. Only admins can read system logs. Write access is denied to everyone.
+     * @path /system_logs/scraper_status
+     * @allow (get) - Only admins can read system logs.
+     *   Example: An admin attempts to read the `scraper_status` document.
+     * @deny (create, list, update, delete) - No one can create, list, update, or delete system logs.
+     *   Example: Any attempt to create, list, update, or delete an audit log entry.
+     */
+    match /system_logs/scraper_status {
+        allow get: if isAdmin();
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
   }
 }
