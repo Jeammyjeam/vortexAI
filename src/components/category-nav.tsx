@@ -6,12 +6,7 @@ import { collection, query, orderBy, Firestore } from 'firebase/firestore';
 import { Button } from './ui/button';
 import { LayoutGrid, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-
-interface Category {
-    id: string;
-    name: string;
-    slug: string;
-}
+import { Category } from '@/lib/types';
 
 export function CategoryNav() {
     const firestore = useFirestore();

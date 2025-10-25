@@ -105,7 +105,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                         <div className="flex items-center gap-4 mt-4 text-xl">
                             <div className="flex items-center gap-1.5 text-primary">
                                 <DollarSign className="h-6 w-6" />
-                                <span className="font-bold font-satoshi">{product.price?.toFixed(2)} {product.currency}</span>
+                                <span className="font-bold">{product.price?.toFixed(2)} {product.currency}</span>
                             </div>
                         </div>
 
@@ -154,7 +154,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                         
                          {/* Admin Action Bar */}
                         <div className="mt-8 pt-6 border-t border-border">
-                            <h3 className="font-satoshi font-semibold mb-3">Admin Actions</h3>
+                            <h3 className="font-semibold mb-3">Admin Actions</h3>
                             <ProductStatusUpdater productId={product.id} currentStatus={product.listing_status} />
                         </div>
                     </div>
@@ -163,5 +163,3 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         </div>
     );
 }
-
-    

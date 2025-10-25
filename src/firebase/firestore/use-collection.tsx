@@ -63,7 +63,6 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     // If the query is null or undefined, it means we are not ready to fetch yet.
-    // This happens when dependencies (like the user object) are still loading.
     if (!memoizedTargetRefOrQuery) {
       setIsLoading(true); // Keep loading until a valid query is provided
       setData(null);

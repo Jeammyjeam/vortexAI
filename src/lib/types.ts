@@ -38,3 +38,11 @@ export interface Product {
   enriched_at?: Timestamp | Date;
   published_at?: Timestamp | Date;
 }
+
+export interface Category {
+    id: string;
+    name: string;
+    slug: string;
+    product_count: number;
+    created_at: Timestamp | Date;
+}

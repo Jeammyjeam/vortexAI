@@ -22,7 +22,7 @@ export async function POST(
 
     // Verify the ID token and check for admin claim
     const decodedToken = await auth.verifyIdToken(idToken);
-    if (!decodedToken.admin) {
+    if (decodedToken.admin !== true) {
         return NextResponse.json({ error: 'User is not an admin' }, { status: 403 });
     }
 

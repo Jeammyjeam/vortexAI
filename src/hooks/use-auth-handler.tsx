@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from './use-toast';
-import type { Firestore, User } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 
 export function useAuthActions() {
   const auth = useAuth();

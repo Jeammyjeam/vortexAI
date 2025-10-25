@@ -1,16 +1,10 @@
 // Using a server component to fetch data initially
 import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '@/firebase/server';
-import { Product } from '@/lib/types';
+import { Product, Category } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
 import { Type } from 'lucide-react';
-
-interface Category {
-    id: string;
-    name: string;
-    slug: string;
-}
 
 async function getCategoryAndProducts(slug: string): Promise<{ category: Category | null, products: Product[] }> {
     try {

@@ -39,7 +39,6 @@ export default function DashboardPage() {
   const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
   // 4. Show a loading state until authentication and initial data load are complete
-  // This prevents content flashes and ensures we have a user before rendering the main view
   if (isUserLoading || (user && areProductsLoading)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -52,7 +51,6 @@ export default function DashboardPage() {
   }
 
   // If loading is finished and there's still no user, don't render anything
-  // The useEffect above will handle the redirect.
   if (!user) {
     return null;
   }

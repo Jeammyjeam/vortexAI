@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -71,7 +70,7 @@ export function ProductStatusUpdater({ productId, currentStatus }: ProductStatus
     });
   };
   
-  const isActionable = currentStatus === 'draft' || currentStatus === 'enriched' || currentStatus === 'failed_enrichment' || currentStatus === 'failed_publish';
+  const isActionable = ['draft', 'enriched', 'failed_enrichment', 'failed_publish'].includes(currentStatus);
 
   return (
     <div className="flex gap-4">
