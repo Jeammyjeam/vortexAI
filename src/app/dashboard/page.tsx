@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { collection, query, orderBy, Firestore } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { ProductCard } from '@/components/product-card';
-import { ProductListing } from '@/lib/types';
+import { Product } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -23,19 +23,19 @@ export default function DashboardPage() {
     () =>
       firestore
         ? query(
-            collection(firestore as Firestore, 'productListings'),
-            orderBy('extractedDate', 'desc')
+            collection(firestore as Firestore, 'products'),
+            orderBy('created_at', 'desc')
           )
         : null,
     [firestore]
   );
 
-  const { data: products, isLoading } = useCollection<ProductListing>(productsQuery);
+  const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
   if (isUserLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <div className="text-foreground">Loading Dashboard...</div>
+        <div className="text-foreground font-orbitron">Loading Command Console...</div>
       </div>
     );
   }
@@ -58,9 +58,9 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-card rounded-lg border border-dashed border-cyber-gray">
+          <div className="text-center py-20 bg-card rounded-lg border border-dashed border-secondary">
             <p className="text-muted-foreground font-inter">No product listings found.</p>
-            <p className="text-sm text-muted-foreground/50 mt-2 font-satoshi">The grid is empty. Start a new extraction to populate products.</p>
+            <p className="text-sm text-muted-foreground/50 mt-2 font-satoshi">The grid is empty. The scraper may be running or no products have been discovered yet.</p>
           </div>
         )}
       </main>

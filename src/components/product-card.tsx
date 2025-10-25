@@ -5,12 +5,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CheckCircle, DollarSign, Tag, XCircle } from 'lucide-react';
-import type { ProductListing } from '@/lib/types';
+import { CheckCircle, DollarSign, Tag, XCircle, ShoppingCart } from 'lucide-react';
+import type { Product } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { useRouter } from 'next/navigation';
 
 interface ProductCardProps {
-  product: ProductListing;
+  product: Product;
 }
 
 const getPlaceholderImage = (productId: string) => {
@@ -18,14 +19,33 @@ const getPlaceholderImage = (productId: string) => {
   return placeholderImages[hash % placeholderImages.length];
 };
 
+const getStatusVariant = (status: Product['listing_status']) => {
+  switch (status) {
+    case 'published': return 'default';
+    case 'approved': return 'secondary';
+    case 'enriched': return 'secondary';
+    case 'rejected':
+    case 'failed_enrichment':
+    case 'failed_publish':
+      return 'destructive';
+    default: return 'outline';
+  }
+};
+
 export function ProductCard({ product }: ProductCardProps) {
-    const placeholder = getPlaceholderImage(product.id);
+  const router = useRouter();
+  const placeholder = getPlaceholderImage(product.id);
+  const displayImage = product.images?.[0]?.replace('gs://', 'https://storage.googleapis.com/') || placeholder.url;
+
   return (
-    <Card className="glassmorphic flex flex-col overflow-hidden group hover:border-primary/50 transition-colors duration-300">
+    <Card 
+        onClick={() => router.push(`/product/${product.id}`)}
+        className="glassmorphic flex flex-col overflow-hidden group hover:border-primary/50 transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10"
+    >
       <CardHeader className="p-0 relative">
         <div className="aspect-[4/3] relative overflow-hidden">
           <Image
-            src={product.imageUrl || placeholder.url}
+            src={displayImage}
             alt={product.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -38,31 +58,30 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.title}
            </CardTitle>
         </div>
-        <Badge 
-            variant={product.halalStatus === 'compliant' ? 'default' : 'destructive'}
-            className="absolute top-4 right-4"
+         <Badge 
+            variant={getStatusVariant(product.listing_status)}
+            className="absolute top-2 right-2 capitalize"
         >
-            {product.halalStatus === 'compliant' ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
-            {product.halalStatus}
+            {product.listing_status}
         </Badge>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        <p className="text-sm text-muted-foreground font-inter line-clamp-3">
-          {product.description}
+        <p className="text-sm text-muted-foreground font-inter line-clamp-2">
+          {product.enriched_fields?.seo_description || product.description}
         </p>
         <div className="flex items-center gap-4 mt-4 text-sm">
             <div className="flex items-center gap-1.5 text-primary">
                 <DollarSign className="h-4 w-4" />
-                <span className="font-bold font-satoshi">{product.price.toFixed(2)} {product.currency}</span>
+                <span className="font-bold font-satoshi">{product.price?.toFixed(2)} {product.currency}</span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Tag className="h-4 w-4" />
-                <span className="font-satoshi">{product.category}</span>
+                 <ShoppingCart className="h-4 w-4" />
+                <span className="font-satoshi">{product.source_domain}</span>
             </div>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button variant="outline" className="w-full font-satoshi">View Details</Button>
+        <Button variant="outline" className="w-full font-satoshi">Review & Approve</Button>
       </CardFooter>
     </Card>
   );
