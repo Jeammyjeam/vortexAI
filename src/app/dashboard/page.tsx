@@ -9,36 +9,32 @@ import { ProductCard } from '@/components/product-card';
 import { Product } from '@/lib/types';
 import { CategoryNav } from '@/components/category-nav';
 import { Loader2 } from 'lucide-react';
+import { ScraperStatus } from '@/components/scraper-status';
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
 
-  // 1. Redirect unauthenticated users
   useEffect(() => {
-    // Wait until the initial user loading is complete
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
-  // 2. Memoize the Firestore query
   const productsQuery = useMemoFirebase(
     () =>
-      firestore && user // Only create query if firestore is initialized and user is logged in
+      firestore && user
         ? query(
             collection(firestore as Firestore, 'products'),
             orderBy('created_at', 'desc')
           )
-        : null, // Return null if not ready, the hook will wait
+        : null,
     [firestore, user]
   );
 
-  // 3. Subscribe to the real-time collection data
   const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
-  // 4. Show a loading state until authentication and initial data load are complete
   if (isUserLoading || (user && areProductsLoading)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -50,7 +46,6 @@ export default function DashboardPage() {
     );
   }
 
-  // If loading is finished and there's still no user, don't render anything
   if (!user) {
     return null;
   }
@@ -58,8 +53,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="container mx-auto py-12 px-4 md:px-6">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <h1 className="text-4xl font-bold font-orbitron">Command Console</h1>
+          <ScraperStatus />
         </div>
         
         <div className="mb-8">
@@ -75,7 +71,7 @@ export default function DashboardPage() {
         ) : (
           <div className="text-center py-20 bg-card rounded-lg border border-dashed border-secondary">
             <p className="text-muted-foreground">No product listings found.</p>
-            <p className="text-sm text-muted-foreground/50 mt-2">The grid is empty. The scraper may be running or no products have been discovered yet.</p>
+            <p className="text-sm text-muted-foreground/50 mt-2">The grid is empty. Click "Start Discovery" to begin scanning for products.</p>
           </div>
         )}
       </main>

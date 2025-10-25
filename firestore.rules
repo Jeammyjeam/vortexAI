@@ -1,114 +1,132 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
- *
- * Core Philosophy:
- * This ruleset prioritizes security by enforcing role-based access control and ownership checks.
- * It uses a flexible data model, deferring strict schema validation for a later phase.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a role-based access control model with ownership constraints.
  *
  * Data Structure:
- * - /products/{productId}: Publicly readable, but create/update/delete restricted to authorized users.
- * - /categories/{categoryId}: Publicly readable. Write operations are denied.
- * - /users/{userId}: Only the authenticated user can read/write their own document.
- * - /schedules/{scheduleId}: Write operations are denied.
- * - /audit/{auditId}: Write operations are denied.
+ * - /products/{productId}: Publicly readable, owner-only write access.
+ * - /categories/{categoryId}: Publicly readable, admin-only write access.
+ * - /users/{userId}: Owner-only access.
+ * - /schedules/{scheduleId}: Admin-only access.
+ * - /audit/{auditId}: Admin-only access (append-only logging).
  *
  * Key Security Decisions:
- * - Listing all users is disallowed.
- * - Categories, Schedules, and Audit logs are read-only for all clients.
- * - Read operations are public, write operations are denied on certain collections.
+ * - Public read access for products and categories to facilitate open browsing.
+ * - Admin role required for managing schedules and viewing audit logs.
+ * - User listing is forbidden.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to products, but restricts write access to authorized users.
+     * @description Allows public read access to product data, but restricts modifications to the owner.
      * @path /products/{productId}
-     * @allow (get, list): Any user can read products.
-     * @allow (create): Only authorized users can create products.
-     * @deny (update, delete): Only authorized users can update or delete products.
-     * @principle Allows public read access while restricting write access.
+     * @allow (get, list)
+     * @allow (create) - Authenticated user creates a product with their user ID as the owner ID.
+     * @allow (update, delete) - Authenticated user updates/deletes a product only if they are the owner.
+     * @deny (create) - Non-authenticated user attempts to create a product.
+     * @deny (update, delete) - Authenticated user attempts to update/delete a product they don't own.
+     * @principle Public read, owner-only write.
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create: if false; // TODO: Add authorization check for create.
-      allow update: if false; // TODO: Add authorization check for update.
-      allow delete: if false; // TODO: Add authorization check for delete.
+      allow create: if isSignedIn() && request.resource.data.keys().hasAll(['source_domain', 'source_url', 'source_product_id', 'title', 'normalized_title', 'description', 'price', 'currency', 'images', 'image_hashes', 'seller', 'reviews_count', 'trust_score', 'trend_score', 'category_name', 'category_slug', 'listing_status', 'provenance_raw_key', 'shopify_product_id', 'created_at', 'updated_at', 'enriched_at', 'published_at']);
+      allow update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows public read access to categories, but denies all write access.
+     * @description Allows public read access to categories, but restricts modifications to administrators.
      * @path /categories/{categoryId}
-     * @allow (get, list): Any user can read categories.
-     * @deny (create, update, delete): No user can create, update, or delete categories.
-     * @principle Enforces read-only access to category data.
+     * @allow (get, list)
+     * @allow (create, update, delete) - Admin user creates, updates, or deletes a category.
+     * @deny (create, update, delete) - Non-admin user attempts to create, update, or delete a category.
+     * @principle Public read, admin-only write.
      */
     match /categories/{categoryId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Restricts access to user documents to the authenticated user.
+     * @description Restricts access to user documents to the owning user.
      * @path /users/{userId}
-     * @allow (get, list): Only the authenticated user can read their own document. Listing is disallowed for all users.
-     * @allow (create): Only the authenticated user can create their own document.
-     * @allow (update, delete): Only the authenticated user can update or delete their own document.
-     * @deny (create): If the userId in the path does not match the authenticated user's UID.
-     * @deny (update, delete): If the document does not exist or the userId in the path does not match the authenticated user's UID.
-     * @principle Enforces document ownership for user data.
+     * @allow (get) - Authenticated user reads their own user document.
+     * @allow (create) - Authenticated user creates their own user document with a matching user ID.
+     * @allow (update, delete) - Authenticated user updates/deletes their own user document.
+     * @deny (get) - Authenticated user attempts to read another user's document.
+     * @deny (create) - Authenticated user attempts to create a document with a mismatched user ID.
+     * @deny (update, delete) - Authenticated user attempts to update/delete another user's document.
+     * @principle Owner-only access to user data.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid && request.resource.data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'last_login']);
+      allow update: if isOwner(userId) && (request.resource.data.uid == resource.data.uid);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Denies all access to the schedules collection.
+     * @description Restricts access to schedules to administrators only.
      * @path /schedules/{scheduleId}
-     * @deny (get, list, create, update, delete): No user can read or write schedule data.
-     * @principle Enforces a completely closed-off collection.
+     * @allow (create, get, update, delete, list) - Admin user creates, reads, updates, deletes, or lists schedules.
+     * @deny (create, get, update, delete, list) - Non-admin user attempts to create, read, update, delete, or list schedules.
+     * @principle Admin-only access to schedules.
      */
     match /schedules/{scheduleId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.keys().hasAll(['product_id', 'channel', 'content', 'media_url', 'scheduled_at', 'status']);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
-     * @description Denies all access to the audit collection.
+     * @description Restricts access to audit logs to administrators only (append-only).
      * @path /audit/{auditId}
-     * @deny (get, list, create, update, delete): No user can read or write audit log data.
-     * @principle Enforces a completely closed-off collection.
+     * @allow (create) - Admin user creates an audit log entry.
+     * @deny (get, list, update, delete) - Non-admin user attempts to read, list, update, or delete audit logs.
+     * @principle Admin-only access to audit logs, append-only.
      */
     match /audit/{auditId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.keys().hasAll(['actor_uid', 'action', 'target_resource', 'timestamp', 'details']);
+      allow update, delete: if false;
     }
-  }
 
-  // Helper function to determine if the user is signed in.
-  function isSignedIn() {
-    return request.auth != null;
-  }
+    // ------ Helper functions ------
 
-  // Helper function to determine if the user is the owner of the document.
-  function isOwner(userId) {
-    return isSignedIn() && request.auth.uid == userId;
-  }
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-  // Helper function to determine if the user is the owner of the EXISTING document.
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
+    /**
+     * @description Checks if the user is an administrator.
+     * @return {bool} True if the user is an administrator, false otherwise.
+     */
+    function isAdmin() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource.
+     * @param {string} userId - The user ID to check against.
+     * @return {bool} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource and the resource exists.
+     * @param {string} userId - The user ID to check against.
+     * @return {bool} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
   }
 }

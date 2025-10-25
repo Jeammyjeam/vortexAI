@@ -46,3 +46,10 @@ export interface Category {
     product_count: number;
     created_at: Timestamp | Date;
 }
+
+export interface SystemLog {
+    id: string;
+    status: 'idle' | 'running';
+    last_start: Timestamp | Date;
+    last_finish: Timestamp | Date;
+}

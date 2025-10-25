@@ -1,38 +1,18 @@
-FROM python:3.11-slim
-ENV PYTHONUNBUFFERED=1
+# Use the official Playwright image
+FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
-# Install system dependencies required for Playwright and its browser binaries
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    curl \
-    ca-certificates \
-    build-essential \
-    libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libgbm1 \
-    libasound2 \
-    libxrandr2 \
-    libxss1 \
-    libpangocairo-1.0-0 \
-    libgtk-3-0 \
-    && rm -rf /var/lib/apt/lists/*
-
+# Set working directory
 WORKDIR /app
 
-# Install Python dependencies
-COPY cloudrun/requirements.txt .
+# Copy requirements and install dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN python -m playwright install --with-deps
+# Copy the rest of the application
+COPY . .
 
-# Copy the scraper application code
-COPY cloudrun /app
+# Expose the port the server will run on
+EXPOSE 8080
 
-# Set the command to run the scraper
+# Set the entrypoint to run the server
 CMD ["python", "scraper_cloudrun.py"]
