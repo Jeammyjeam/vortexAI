@@ -18,6 +18,11 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        inter: ['var(--font-inter)'],
+        orbitron: ['var(--font-orbitron)'],
+        satoshi: ['Satoshi', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -71,6 +76,12 @@ const config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+       backgroundImage: {
+        'grid-pattern': "linear-gradient(to bottom, theme('colors.white / 3%') 1px, transparent 1px), linear-gradient(to right, theme('colors.white / 3%') 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        'grid-pattern': '3rem 3rem',
       },
     },
   },
