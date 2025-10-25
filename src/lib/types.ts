@@ -1,13 +1,14 @@
-import { Timestamp } from 'firebase/firestore';
+
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Product {
   id: string;
   source_domain: string;
   source_url: string;
-  source_product_id: string;
+  source_product_id: string | null;
   title: string;
-  normalized_title: string;
-  description: string;
+  normalized_title: string | null;
+  description: string | null;
   price: number;
   currency: string;
   images: string[];
@@ -22,14 +23,14 @@ export interface Product {
   category_name?: string;
   category_slug?: string;
   listing_status: 'draft' | 'enriched' | 'approved' | 'published' | 'rejected' | 'removed' | 'failed_enrichment' | 'failed_publish';
-  provenance_raw_key: string;
+  provenance_raw_key: string | null;
   shopify_product_id?: string;
   enriched_fields?: {
     seo_title?: string;
     seo_description?: string;
     social_captions?: { [key: string]: string };
   };
-  rejection_reason?: string;
+  rejection_reason?: string | null;
   halal_status?: 'compliant' | 'non-compliant' | 'indeterminate';
   halal_reasoning?: string;
   error_message?: string;

@@ -1,16 +1,14 @@
 
-// Using a server component to fetch data initially for SEO and faster loads
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/firebase/server'; // We need a server-side admin instance
+import { db } from '@/firebase/server';
 import { Product } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, ExternalLink, XCircle, CheckCircle } from 'lucide-react';
+import { DollarSign, ExternalLink, XCircle, CheckCircle, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
-import placeholderImages from '@/lib/placeholder-images.json';
 import { ProductStatusUpdater } from './product-status-updater';
-
+import placeholderImages from '@/lib/placeholder-images.json';
 
 async function getProduct(id: string): Promise<Product | null> {
     try {
@@ -23,7 +21,6 @@ async function getProduct(id: string): Promise<Product | null> {
         
         const data = docSnap.data();
         
-        // Firestore Timestamps need to be converted for serialization
         const productData: Product = {
             id: docSnap.id,
             ...data,
@@ -37,7 +34,7 @@ async function getProduct(id: string): Promise<Product | null> {
 
     } catch (error) {
         console.error("Error fetching product:", error);
-        return null; // Don't throw, just return null to be handled as a 404
+        return null;
     }
 }
 
@@ -69,7 +66,6 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         <div className="min-h-screen bg-background text-foreground">
             <main className="container mx-auto py-12 px-4 md:px-6">
                 <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-                    {/* Image Column */}
                     <div>
                          <Card className="overflow-hidden glassmorphic">
                              <div className="aspect-square relative">
@@ -94,7 +90,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                              ))}
                          </div>
                     </div>
-                    {/* Details Column */}
+
                     <div>
                         <Badge variant={getStatusVariant(product.listing_status)} className="capitalize mb-2">{product.listing_status.replace(/_/g, ' ')}</Badge>
                         <h1 className="text-3xl lg:text-4xl font-bold font-orbitron">{product.enriched_fields?.seo_title || product.title}</h1>
@@ -113,7 +109,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                             {product.enriched_fields?.seo_description || product.description}
                         </p>
                         
-                        {product.halal_status && product.halal_status === 'compliant' && (
+                        {product.halal_status === 'compliant' && (
                              <Card className="mt-6 bg-green-600/10 border-green-500/30">
                                 <CardHeader>
                                     <CardTitle className="text-green-400 flex items-center gap-2"><CheckCircle className="h-5 w-5"/> Halal Compliant</CardTitle>
@@ -142,7 +138,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                         {product.listing_status.startsWith('failed') && product.error_message && (
                             <Card className="mt-6 bg-amber-500/10 border-amber-500/30">
                                 <CardHeader>
-                                    <CardTitle className="text-amber-400 flex items-center gap-2"><XCircle className="h-5 w-5"/> System Error</CardTitle>
+                                    <CardTitle className="text-amber-400 flex items-center gap-2"><ShieldAlert className="h-5 w-5"/> System Error</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-sm text-amber-400/80 font-mono break-all">
@@ -152,7 +148,6 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                             </Card>
                         )}
                         
-                         {/* Admin Action Bar */}
                         <div className="mt-8 pt-6 border-t border-border">
                             <h3 className="font-semibold mb-3">Admin Actions</h3>
                             <ProductStatusUpdater productId={product.id} currentStatus={product.listing_status} />

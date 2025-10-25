@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { DollarSign, ShoppingCart } from 'lucide-react';
+import { DollarSign, ExternalLink } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { useRouter } from 'next/navigation';
@@ -69,15 +70,15 @@ export function ProductCard({ product }: ProductCardProps) {
         <p className="text-sm text-muted-foreground line-clamp-2">
           {product.enriched_fields?.seo_description || product.description}
         </p>
-        <div className="flex items-center gap-4 mt-4 text-sm">
+        <div className="flex items-center justify-between gap-4 mt-4 text-sm">
             <div className="flex items-center gap-1.5 text-primary">
                 <DollarSign className="h-4 w-4" />
                 <span className="font-bold">{product.price?.toFixed(2)} {product.currency}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-                 <ShoppingCart className="h-4 w-4" />
+            <a href={product.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors text-xs">
+                 <ExternalLink className="h-3 w-3" />
                 <span>{product.source_domain}</span>
-            </div>
+            </a>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">

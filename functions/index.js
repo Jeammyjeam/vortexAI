@@ -1,51 +1,44 @@
-/**
- * VORTEX AI GRID - Cloud Functions
- *
- * This file contains the core backend logic that responds to events in Firestore.
- * 1. onProductCreate: Triggers AI enrichment when a new product is scraped.
- * 2. onProductApprove: Publishes an approved product to Shopify.
- */
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
-const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
 const { OpenAI } = require("openai");
 
 admin.initializeApp();
 const db = admin.firestore();
-const secretManager = new SecretManagerServiceClient();
+const secretManager = new functions.secret.SecretManagerServiceClient();
 
-/**
- * Access a secret from Google Secret Manager.
- * @param {string} secretName The name of the secret to access.
- * @returns {Promise<string>} The secret value.
- */
-async function accessSecret(secretName) {
-  const [version] = await secretManager.accessSecretVersion({
-    name: `projects/${process.env.GCLOUD_PROJECT}/secrets/${secretName}/versions/latest`,
-  });
-  return version.payload.data.toString();
-}
+let openai;
 
-/**
- * ---- ENRICHMENT FUNCTION ----
- * Triggered when a new product document is created in Firestore.
- * Fetches the product data, calls OpenAI for enrichment, and updates the doc.
- */
+const setupOpenAI = async () => {
+    try {
+        const [version] = await secretManager.accessSecretVersion({
+            name: `projects/${process.env.GCLOUD_PROJECT}/secrets/OPENAI_API_KEY/versions/latest`,
+        });
+        const openaiApiKey = version.payload.data.toString();
+        openai = new OpenAI({ apiKey: openaiApiKey });
+        console.log("Successfully configured OpenAI client.");
+    } catch (error) {
+        console.error("Could not access OpenAI API Key secret. Enrichment will be disabled.", error);
+        openai = null;
+    }
+};
+
+setupOpenAI();
+
 exports.onProductCreate = functions.firestore
   .document("products/{productId}")
   .onCreate(async (snap, context) => {
+    if (!openai) {
+      console.log("OpenAI client not available, skipping enrichment.");
+      return null;
+    }
+    
     const product = snap.data();
     const { productId } = context.params;
     console.log(`[Enrichment] Starting for product: ${productId}`);
 
     try {
-      // 1. Get OpenAI API Key from Secret Manager
-      const openaiApiKey = await accessSecret("OPENAI_API_KEY");
-      const openai = new OpenAI({ apiKey: openaiApiKey });
-
-      // 2. Define the AI prompt for enrichment and Halal classification
       const prompt = `
         You are an expert e-commerce copywriter and a specialist in Islamic compliance.
         Analyze the following product data:
@@ -62,7 +55,6 @@ exports.onProductCreate = functions.firestore
         Return a single, minified JSON object with the keys: "halal_status", "halal_reasoning", "seo_title", "seo_description", "social_caption".
       `;
 
-      // 3. Call OpenAI
       const response = await openai.chat.completions.create({
         model: "gpt-4-turbo-preview",
         messages: [{ role: "user", content: prompt }],
@@ -71,7 +63,6 @@ exports.onProductCreate = functions.firestore
 
       const result = JSON.parse(response.choices[0].message.content);
 
-      // 4. Determine new status and prepare update payload
       const isCompliant = result.halal_status === "compliant";
       const newStatus = isCompliant ? "enriched" : "rejected";
 
@@ -87,20 +78,15 @@ exports.onProductCreate = functions.firestore
         },
         halal_status: result.halal_status,
         halal_reasoning: result.halal_reasoning,
+        rejection_reason: isCompliant ? null : result.halal_reasoning,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       };
-      
-      if (newStatus === 'rejected') {
-        updatePayload.rejection_reason = result.halal_reasoning;
-      }
 
-      // 5. Update Firestore
       await db.collection("products").doc(productId).update(updatePayload);
       console.log(`[Enrichment] Success for product ${productId}. Status: ${newStatus}`);
 
     } catch (error) {
       console.error(`[Enrichment] Failed for product ${productId}:`, error);
-      // Update status to 'failed_enrichment'
       await db.collection("products").doc(productId).update({
           listing_status: "failed_enrichment",
           error_message: error.message || "An unknown error occurred during enrichment.",
@@ -110,11 +96,6 @@ exports.onProductCreate = functions.firestore
   });
 
 
-/**
- * ---- SHOPIFY PUBLISH FUNCTION ----
- * Triggered when a product's listing_status is updated to 'approved'.
- * Creates the product in Shopify via the Admin API.
- */
 exports.onProductApprove = functions.firestore
   .document("products/{productId}")
   .onUpdate(async (change, context) => {
@@ -122,12 +103,10 @@ exports.onProductApprove = functions.firestore
     const previousValue = change.before.data();
     const { productId } = context.params;
 
-    // Check if the status was just changed to 'approved'
     if (newValue.listing_status !== "approved" || previousValue.listing_status === "approved") {
       return null;
     }
     
-    // Idempotency check: if it already has a shopify ID, do nothing.
     if (newValue.shopify_product_id) {
         console.log(`[Shopify] Product ${productId} already has a Shopify ID. Skipping.`);
         return null;
@@ -136,25 +115,28 @@ exports.onProductApprove = functions.firestore
     console.log(`[Shopify] Starting publish for product: ${productId}`);
 
     try {
-        // 1. Get Shopify credentials from Secret Manager
-        const shopifyToken = await accessSecret("SHOPIFY_ADMIN_ACCESS_TOKEN");
-        const shopifyStoreUrl = await accessSecret("SHOPIFY_STORE_URL");
-        const apiVersion = "2024-04";
+        const [tokenVersion] = await secretManager.accessSecretVersion({
+            name: `projects/${process.env.GCLOUD_PROJECT}/secrets/SHOPIFY_ADMIN_ACCESS_TOKEN/versions/latest`,
+        });
+        const shopifyToken = tokenVersion.payload.data.toString();
 
-        // 2. Prepare Shopify product payload
+        const [urlVersion] = await secretManager.accessSecretVersion({
+            name: `projects/${process.env.GCLOUD_PROJECT}/secrets/SHOPIFY_STORE_URL/versions/latest`,
+        });
+        const shopifyStoreUrl = urlVersion.payload.data.toString();
+
         const shopifyProduct = {
             product: {
                 title: newValue.enriched_fields.seo_title || newValue.title,
                 body_html: newValue.enriched_fields.seo_description || newValue.description,
                 vendor: newValue.source_domain,
-                status: "draft", // Create as draft first for final review in Shopify
+                status: "draft",
                 images: newValue.images.map(url => ({ src: url.replace("gs://", "https://storage.googleapis.com/") }))
             }
         };
 
-        // 3. Call Shopify Admin API
         const response = await axios.post(
-            `${shopifyStoreUrl}/admin/api/${apiVersion}/products.json`,
+            `${shopifyStoreUrl}/admin/api/2024-04/products.json`,
             shopifyProduct,
             {
                 headers: {
@@ -166,7 +148,6 @@ exports.onProductApprove = functions.firestore
 
         const createdProduct = response.data.product;
 
-        // 4. Update Firestore with Shopify ID and new status
         await db.collection("products").doc(productId).update({
             listing_status: "published",
             shopify_product_id: createdProduct.id.toString(),
@@ -181,10 +162,8 @@ exports.onProductApprove = functions.firestore
         console.error(`[Shopify] Failed to publish product ${productId}:`, errorMessage);
         await db.collection("products").doc(productId).update({
             listing_status: "failed_publish",
-            error_message: errorMessage || "An unknown error occurred during Shopify publish.",
+            error_message: errorMessage,
             updated_at: admin.firestore.FieldValue.serverTimestamp(),
         });
     }
   });
-
-    
