@@ -1,17 +1,33 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-// IMPORTANT: Path to your service account key file
-// Download this from your Firebase project settings
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : undefined;
+const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-const appName = 'firebase-admin-app-for-nextjs';
-const app = getApps().find(a => a.name === appName) || initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
-    }, appName);
+let app: App;
+
+if (!getApps().length) {
+  if (!serviceAccountString) {
+    // In a Google Cloud environment (like Cloud Run), the SDK can often auto-initialize
+    // without explicit credentials if the service account has the right permissions.
+    app = initializeApp();
+  } else {
+    try {
+      const serviceAccount = JSON.parse(serviceAccountString);
+      app = initializeApp({
+        credential: cert(serviceAccount),
+      });
+    } catch (error: any) {
+      console.error('Error parsing service account key or initializing Firebase Admin SDK:', error);
+      // If initialization fails, subsequent calls to db or auth will fail.
+      // This is a critical startup error.
+      throw new Error('Firebase Admin SDK initialization failed.');
+    }
+  }
+} else {
+  app = getApps()[0];
+}
+
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
