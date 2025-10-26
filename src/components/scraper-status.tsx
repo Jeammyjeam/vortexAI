@@ -33,9 +33,9 @@ export function ScraperStatus() {
 
         startTransition(async () => {
             try {
-                // The server action now handles authentication via its service account.
-                // We no longer need to pass the user's ID token.
-                const result = await startScraper();
+                // Get the user's ID token to securely pass their identity to the server action.
+                const idToken = await user.getIdToken(true);
+                const result = await startScraper(idToken);
 
                 if (result.error) {
                     throw new Error(result.error);
